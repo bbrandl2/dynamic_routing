@@ -27,8 +27,8 @@ public class Main
 		Timer timer = new Timer();
 		TimerTask task10 = new MyTask("Ten seconds");
 		TimerTask task30 = new MyTask("Thirty seconds");
-		timer.schedule(task10, 10000);
-		timer.schedule(task30, 30000);
+		timer.schedule(task10, 0, 10000);
+		timer.schedule(task30, 0, 30000);
 		
 		// Parse arguments
 		for(int i = 0; i < args.length; i++)

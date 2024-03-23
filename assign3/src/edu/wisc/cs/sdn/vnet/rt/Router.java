@@ -65,8 +65,11 @@ public class Router extends Device {
 			System.out.print(this.routeTable.toString());
 			System.out.println("-------------------------------------------------");
 		}
-		else {	// Add entries to RT reachable by router
-			
+		else {	
+			// Add entries to RT reachable by router
+			for (Map.Entry<String, Iface> iface : this.interfaces.entrySet()) {
+				routeTable.insert(iface.getValue().getIpAddress() & iface.getValue().getSubnetMask(), 0, iface.getValue().getSubnetMask(), iface.getValue());
+			}
 		}
 	}
 

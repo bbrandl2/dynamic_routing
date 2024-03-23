@@ -5,6 +5,9 @@ import edu.wisc.cs.sdn.vnet.sw.Switch;
 import edu.wisc.cs.sdn.vnet.vns.Command;
 import edu.wisc.cs.sdn.vnet.vns.VNSComm;
 
+import java.util.Timer;
+import java.util.TimerTask;
+
 public class Main 
 {
 	private static final short DEFAULT_PORT = 8888;
@@ -20,6 +23,11 @@ public class Main
 		short port = DEFAULT_PORT;
 		VNSComm vnsComm = null;
 		Device dev = null;
+		Timer timer = new Timer();
+		TimerTask task10 = new MyTask("Ten seconds");
+		TimerTask task30 = new MyTask("Thirty seconds");
+		timer.schedule(task10, 10000);
+		timer.schedule(task30, 30000);
 		
 		// Parse arguments
 		for(int i = 0; i < args.length; i++)
@@ -102,21 +110,7 @@ public class Main
 
 		// Read messages from the server until the server closes the connection
 		System.out.println("<-- Ready to process packets -->");
-		long currTime = System.currentTimeMillis();
-		int acc = 0;
-		while (vnsComm.readFromServer()){
-			if (System.currentTimeMillis() - currTime >= 10000){
-				acc += System.currentTimeMillis() - currTime;
-				System.out.println("Ten seconds");
-
-				if (acc >= 30000){
-					System.out.println("Thirty seconds");
-					acc = 0;
-				}
-
-				currTime = System.currentTimeMillis();
-			}
-		}
+		while (vnsComm.readFromServer());
 		
 		// Shutdown the router
 		dev.destroy();

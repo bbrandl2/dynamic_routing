@@ -70,6 +70,10 @@ public class Router extends Device {
 			for (Map.Entry<String, Iface> iface : this.interfaces.entrySet()) {
 				routeTable.insert(iface.getValue().getIpAddress() & iface.getValue().getSubnetMask(), 0, iface.getValue().getSubnetMask(), iface.getValue());
 			}
+			System.out.println("Loaded dynamic route table");
+			System.out.println("-------------------------------------------------");
+			System.out.print(this.routeTable.toString());
+			System.out.println("-------------------------------------------------");
 		}
 	}
 

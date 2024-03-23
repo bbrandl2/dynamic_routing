@@ -102,7 +102,21 @@ public class Main
 
 		// Read messages from the server until the server closes the connection
 		System.out.println("<-- Ready to process packets -->");
-		while (vnsComm.readFromServer());
+		long currTime = System.currentTimeMillis();
+		int acc = 0;
+		while (vnsComm.readFromServer()){
+			if (System.currentTimeMillis() - currTime >= 10000){
+				acc += System.currentTimeMillis() - currTime;
+				System.out.println("Ten seconds");
+
+				if (acc >= 30000){
+					System.out.println("Thirty seconds");
+					acc = 0;
+				}
+
+				currTime = System.currentTimeMillis();
+			}
+		}
 		
 		// Shutdown the router
 		dev.destroy();

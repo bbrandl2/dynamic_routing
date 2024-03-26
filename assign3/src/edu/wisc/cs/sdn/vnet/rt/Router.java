@@ -226,7 +226,7 @@ public class Router extends Device {
 			ipPacket.setPayload(udpPacket);
 
 			// Add RIPv2 packet (route table) as UDP payload
-			ripTable.setParent(udpPacket); // Is this needed?
+			// ripTable.setParent(udpPacket); // Is this needed?
 
 			udpPacket.setPayload(ripTable);
 

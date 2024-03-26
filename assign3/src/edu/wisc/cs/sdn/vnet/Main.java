@@ -25,10 +25,8 @@ public class Main
 		VNSComm vnsComm = null;
 		Device dev = null;
 		Timer timer = new Timer();
-		TimerTask task10 = new MyTask("Ten seconds");
-		TimerTask task30 = new MyTask("Thirty seconds");
-		timer.schedule(task10, 0, 10000);
-		timer.schedule(task30, 0, 30000);
+		TimerTask task10;
+		TimerTask task30;
 		
 		// Parse arguments
 		for(int i = 0; i < args.length; i++)
@@ -107,7 +105,18 @@ public class Main
 			// Read static ACP cache
 			if (arpCacheFile != null)
 			{ ((Router)dev).loadArpCache(arpCacheFile); }
+
+			// Unsolicited response
+			task10 = new MyTask((Router)dev);
+			timer.schedule(task10, 0, 10000);
+			// Create a "send RIP response" method to call every 10 seconds
+
+			// Update check
+			task30 = new MyTask((Router)dev);
+			timer.schedule(task30, 0, 30000);
 		}
+
+		
 
 		// Read messages from the server until the server closes the connection
 		System.out.println("<-- Ready to process packets -->");

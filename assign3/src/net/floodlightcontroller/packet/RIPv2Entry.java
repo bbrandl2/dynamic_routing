@@ -15,16 +15,20 @@ public class RIPv2Entry
 	protected int subnetMask;
 	protected int nextHopAddress;
 	protected int metric;
+    protected long timestamp;
+    protected boolean perm;
 
     public RIPv2Entry()
     { }
 
-    public RIPv2Entry(int address, int subnetMask, int metric)
+    public RIPv2Entry(int address, int subnetMask, int metric, long time, boolean permanent)
     {
         this.addressFamily = ADDRESS_FAMILY_IPv4;
         this.address = address;
         this.subnetMask = subnetMask;
         this.metric = metric;
+        this.timestamp = time;
+        this.perm = permanent;
     }
 
 	public String toString()
@@ -71,6 +75,10 @@ public class RIPv2Entry
 
     public void setMetric(int metric)
     { this.metric = metric; }
+
+    public void updateTime(){
+        this.timestamp = System.currentTimeMillis();
+    }
 
 	public byte[] serialize() 
     {

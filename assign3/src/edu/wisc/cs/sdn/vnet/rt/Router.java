@@ -11,6 +11,9 @@ import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.MACAddress;
+import net.floodlightcontroller.packet.RIPv2;
+import net.floodlightcontroller.packet.RIPv2Entry;
+import net.floodlightcontroller.packet.UDP;
 
 /**
  * @author Aaron Gember-Jacobson and Anubhavnidhi Abhashkumar
@@ -23,6 +26,8 @@ public class Router extends Device {
 	private ArpCache arpCache;
 
 	private boolean isStatic;
+
+	private RIPv2 ripTable;
 
 	/**
 	 * Creates a router for a specific host.
@@ -66,9 +71,10 @@ public class Router extends Device {
 			System.out.println("-------------------------------------------------");
 		}
 		else {	
-			// Add entries to RT reachable by router
+			// Add entries to RIP table reachable by router
+			// Do we need to maintain a route table with non-RIP entries?
 			for (Map.Entry<String, Iface> iface : this.interfaces.entrySet()) {
-				routeTable.insert(iface.getValue().getIpAddress() & iface.getValue().getSubnetMask(), 0, iface.getValue().getSubnetMask(), iface.getValue());
+				ripTable.addEntry(new RIPv2Entry(iface.getValue().getIpAddress(), iface.getValue().getSubnetMask(), 0, System.currentTimeMillis(), true));
 			}
 			System.out.println("Loaded dynamic route table");
 			System.out.println("-------------------------------------------------");
@@ -160,7 +166,6 @@ public class Router extends Device {
 
 		ipv4Packet.setChecksum((short)0);
 		ipv4Packet.serialize();
-		// remote comment
 
 		// Send the packet out the correct interface
 		this.sendPacket(etherPacket, routeEntry.getInterface());
@@ -192,6 +197,42 @@ public class Router extends Device {
 
 		// Compare computed checksum with packet's checksum
 		return computedChecksum == checksum;
+	}
+
+	public void sendResponse(){
+		// Send RIP response out of all interfaces, called every 10 seconds
+		for (Map.Entry<String, Iface> iface : this.interfaces.entrySet()) {
+			// Create Ethernet packet
+			Ethernet etherpacket = new Ethernet();
+			etherpacket.setDestinationMACAddress("FF:FF:FF:FF:FF:FF");
+			etherpacket.setEtherType(Ethernet.TYPE_IPv4);
+			etherpacket.setSourceMACAddress(iface.getValue().getMacAddress().toString());
+
+			// Create IPv4 packet, add as Ether payload
+			IPv4 ipPacket = new IPv4();
+			ipPacket.setProtocol(IPv4.PROTOCOL_UDP);
+			ipPacket.setSourceAddress(iface.getValue().getIpAddress());
+			ipPacket.setDestinationAddress("224.0.0.9");
+			ipPacket.setParent(etherpacket);
+
+			etherpacket.setPayload(ipPacket);
+
+			// Create UDP packet, add as IP payload
+			UDP udpPacket = new UDP();
+			udpPacket.setDestinationPort((short) 520);
+			udpPacket.setSourcePort((short) 520);
+			udpPacket.setParent(ipPacket);
+
+			ipPacket.setPayload(udpPacket);
+
+			// Add RIPv2 packet (route table) as UDP payload
+			ripTable.setParent(udpPacket); // Is this needed?
+
+			udpPacket.setPayload(ripTable);
+
+			// Send packet out of current interface
+			this.sendPacket(etherpacket, iface.getValue());
+		}
 	}
 
 }

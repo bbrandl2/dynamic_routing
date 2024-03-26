@@ -1,15 +1,17 @@
 package edu.wisc.cs.sdn.vnet;
 
 import java.util.TimerTask;
+import edu.wisc.cs.sdn.vnet.rt.Router;
 
 public class MyTask extends TimerTask {
-    private String message;
+    private Router router;
 
-    public MyTask(String msg){
-        this.message = msg;
+    public MyTask(Router router){
+        this.router = router;
     }
 
     public void run() {
-        System.out.println(this.message);
+        System.out.println("Sending unsolicited response...\n" + router.toString() + "\n");
+        router.sendResponse();
     }
 }

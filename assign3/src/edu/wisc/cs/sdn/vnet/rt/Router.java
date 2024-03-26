@@ -141,35 +141,47 @@ public class Router extends Device {
 				return;
 		}
 
-		// Lookup the RouteEntry
-		RouteEntry routeEntry = this.routeTable.lookup(ipv4Packet.getDestinationAddress());
 
-		// Drop the packet if no matching entry found
-		if (routeEntry == null) {
-			return;
+		if (this.isStatic){ // Static route table
+			// Lookup the RouteEntry
+			RouteEntry routeEntry = this.routeTable.lookup(ipv4Packet.getDestinationAddress());
+
+			// Drop the packet if no matching entry found
+			if (routeEntry == null) {
+				return;
+			}
+
+			// Lookup the next-hop IP address
+			int nextHopIp = routeEntry.getGatewayAddress();
+			if (nextHopIp == 0) {
+				nextHopIp = ipv4Packet.getDestinationAddress();
+			}
+
+			// Lookup MAC address corresponding to next-hop IP address
+			MACAddress nextHopMac = this.arpCache.lookup(nextHopIp).getMac();
+			if (nextHopMac == null) {
+				return; // Drop the packet if MAC address not found
+			}
+
+			// Update Ethernet header
+			etherPacket.setDestinationMACAddress(nextHopMac.toBytes());
+			etherPacket.setSourceMACAddress(routeEntry.getInterface().getMacAddress().toBytes());
+
+			ipv4Packet.setChecksum((short)0);
+			ipv4Packet.serialize();
+
+			// Send the packet out the correct interface
+			this.sendPacket(etherPacket, routeEntry.getInterface());
 		}
-
-		// Lookup the next-hop IP address
-		int nextHopIp = routeEntry.getGatewayAddress();
-		if (nextHopIp == 0) {
-			nextHopIp = ipv4Packet.getDestinationAddress();
+		else { // Dynamic route table
+			if (ipv4Packet.getProtocol() == IPv4.PROTOCOL_UDP){
+				UDP udpPacket = (UDP) ipv4Packet.getPayload();
+				if (udpPacket.getDestinationPort() == 520){
+					System.out.println("***RIP PACKET***");
+				}
+			}
 		}
-
-		// Lookup MAC address corresponding to next-hop IP address
-		MACAddress nextHopMac = this.arpCache.lookup(nextHopIp).getMac();
-		if (nextHopMac == null) {
-			return; // Drop the packet if MAC address not found
-		}
-
-		// Update Ethernet header
-		etherPacket.setDestinationMACAddress(nextHopMac.toBytes());
-		etherPacket.setSourceMACAddress(routeEntry.getInterface().getMacAddress().toBytes());
-
-		ipv4Packet.setChecksum((short)0);
-		ipv4Packet.serialize();
-
-		// Send the packet out the correct interface
-		this.sendPacket(etherPacket, routeEntry.getInterface());
+		
 
 		System.out.println("*** -> Router Sent packet: " +
 				etherPacket.toString().replace("\n", "\n\t"));

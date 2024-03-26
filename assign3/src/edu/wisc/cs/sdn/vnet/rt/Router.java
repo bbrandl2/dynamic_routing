@@ -38,6 +38,7 @@ public class Router extends Device {
 		super(host, logfile);
 		this.routeTable = new RouteTable();
 		this.arpCache = new ArpCache();
+		this.ripTable = new RIPv2();
 	}
 
 	/**

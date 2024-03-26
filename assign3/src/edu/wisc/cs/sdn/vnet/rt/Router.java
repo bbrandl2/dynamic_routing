@@ -78,7 +78,7 @@ public class Router extends Device {
 			}
 			System.out.println("Loaded dynamic route table");
 			System.out.println("-------------------------------------------------");
-			System.out.print(this.routeTable.toString());
+			System.out.print(this.ripTable.toString());
 			System.out.println("-------------------------------------------------");
 		}
 	}

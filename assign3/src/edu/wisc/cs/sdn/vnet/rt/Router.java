@@ -174,11 +174,32 @@ public class Router extends Device {
 			this.sendPacket(etherPacket, routeEntry.getInterface());
 		}
 		else { // Dynamic route table
-			if (ipv4Packet.getProtocol() == IPv4.PROTOCOL_UDP){
+			if ( (ipv4Packet.getProtocol() == IPv4.PROTOCOL_UDP) && (((UDP) ipv4Packet.getPayload()).getDestinationPort() == 520) ){
+				System.out.println("\n***RIP PACKET***\n");
+
 				UDP udpPacket = (UDP) ipv4Packet.getPayload();
-				if (udpPacket.getDestinationPort() == 520){
-					System.out.println("***RIP PACKET***");
+				RIPv2 refTable = (RIPv2) udpPacket.getPayload();
+
+				for (RIPv2Entry ripEntry : refTable.getEntries()){
+					// Look up entry in ripTable (create lookup function in RIPv2?)
+					// if entry exists
+						// Check if (metric + 1) < current entry's cost
+							// Update entry to route through new router
+							// Update timestamp
+						// else if (current entry cost + 1) < metric
+							// Send a response back to other router indicating a shorter path
+					// else
+						// Create new entry with next hop as interface IP of router w/ shorter path
+						// Metric as current metric + 1
 				}
+			}
+			else {
+				// Do we need to maintain regular route table?
+
+				// Regular packet handling here:
+				// Lookup destination address in RIP table
+				// Update etherpacket based on the lookup
+				// Send packet out correct interface
 			}
 		}
 		

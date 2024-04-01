@@ -202,7 +202,7 @@ public class Router extends Device {
 		if (ripPacket.getCommand() == RIPv2.COMMAND_REQUEST) {
 			Iface outIface = getOutgoingIface(etherPacket);
 			// send the response on the same interface as the request
-			sendRIPPacket(UNICAST_RES, etherPacket, outIface);
+			sendRIPPacket(UNICAST_RES, etherPacket, ipv4Packet.getSourceAddress(), outIface);
 		} else if (ripPacket.getCommand() == RIPv2.COMMAND_RESPONSE) {
 			// Process each entry in the RIP packet
 			for (RIPv2Entry ripEntry : ripPacket.getEntries()) {
@@ -219,10 +219,8 @@ public class Router extends Device {
 						thisEntry.setNextHopAddress(addr);
 						thisEntry.updateTime();
 					} else if ((thisEntry.getMetric() + 1) < ripEntry.getMetric()) {
-						// TODO
-						// Send a response back to other router indicating a shorter path
-						Iface out = getOutgoingIface(etherpacket);
-						
+						Iface out = getOutgoingIface(etherPacket);
+						this.sendRIPPacket(3, etherPacket, ipv4Packet.getSourceAddress(), out);
 					}
 				}
 			}
@@ -305,7 +303,7 @@ public class Router extends Device {
 		return computedChecksum == checksum;
 	}
 
-	public void sendRIPPacket(int directive, Ethernet etherPacket, Iface iface){
+	public void sendRIPPacket(int directive, Ethernet etherPacket, int ipAddr, Iface outIface){
 		if (directive == BROADCAST_REQ || directive == UNICAST_REQ) {
 			ripTable.setCommand((byte) 1);	// COMMAND_REQUEST
 		} else if (directive == BROADCAST_RES || directive == UNICAST_RES)	{
@@ -337,8 +335,8 @@ public class Router extends Device {
 	
 				ipPacket.setPayload(udpPacket);
 	
-				// Add RIPv2 packet (route table) as UDP payload
-				// ripTable.setParent(udpPacket); // Is this needed?
+				if (directive == BROADCAST_REQ) ripTable.setCommand((byte) 1);
+				else ripTable.setCommand((byte) 2);
 
 				udpPacket.setPayload(ripTable);
 	
@@ -347,7 +345,35 @@ public class Router extends Device {
 			}
 		}
 		else if (directive == UNICAST_REQ || directive == UNICAST_RES) {	// Send directed response
-			
+			Ethernet etherpacket = new Ethernet();
+			etherpacket.setDestinationMACAddress(etherPacket.getSourceMACAddress());
+			etherpacket.setEtherType(Ethernet.TYPE_IPv4);
+			etherpacket.setSourceMACAddress(outIface.getMacAddress().toString());
+
+			// Create IPv4 packet, add as Ether payload
+			IPv4 ipPacket = new IPv4();
+			ipPacket.setProtocol(IPv4.PROTOCOL_UDP);
+			ipPacket.setSourceAddress(outIface.getIpAddress());
+			ipPacket.setDestinationAddress(ipAddr);
+			ipPacket.setParent(etherpacket);
+
+			etherpacket.setPayload(ipPacket);
+
+			// Create UDP packet, add as IP payload
+			UDP udpPacket = new UDP();
+			udpPacket.setDestinationPort((short) 520);
+			udpPacket.setSourcePort((short) 520);
+			udpPacket.setParent(ipPacket);
+
+			ipPacket.setPayload(udpPacket);
+
+			if (directive == UNICAST_REQ) ripTable.setCommand((byte) 1);
+			else ripTable.setCommand((byte) 2);
+
+			udpPacket.setPayload(ripTable);
+
+			// Send packet out of current interface
+			this.sendPacket(etherpacket, outIface);
 		}
 		
 	}
@@ -361,13 +387,3 @@ public class Router extends Device {
 	}
 
 }
-
-/*
- * TODO
- * Send a request out of all interfaces upon initialization
- * Distinguish between requests and responses in handlePacket
- * Handle non-RIP packet forwarding for dynamic route tables
- * Handle 30 second RIP entry checks:
- * 	Do we check all of a router's entries every 30 seconds or
- * 	somehow have route entries individually check their update status?
- */

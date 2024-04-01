@@ -197,17 +197,6 @@ public class Router extends Device {
 							// Send a response back to other router indicating a shorter path
 						}
 					}
-
-					// ^^^^^^^^^^^^^^^
-					// if entry exists
-						// Check if (metric + 1) < current entry's cost
-							// Update entry to route through new router
-							// Update timestamp
-						// else if (current entry cost + 1) < metric
-							// Send a response back to other router indicating a shorter path
-					// else
-						// Create new entry with next hop as interface IP of router w/ shorter path
-						// Metric as current metric + 1
 				}
 			}
 			else {	// Non RIP packet
@@ -289,6 +278,14 @@ public class Router extends Device {
 			
 		}
 		
+	}
+
+	public void checkEntryTimes(){
+		for (RIPv2Entry entry : this.ripTable.getEntries()){
+			if (System.currentTimeMillis() - entry.getTime() >= 30000){
+				this.ripTable.getEntries().remove(entry);
+			}
+		}
 	}
 
 }

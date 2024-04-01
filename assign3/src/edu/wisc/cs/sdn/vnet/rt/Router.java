@@ -185,7 +185,7 @@ public class Router extends Device {
 	private void handleDynamicRouting(Ethernet etherPacket, IPv4 ipv4Packet) {
 		if (ipv4Packet.getProtocol() == IPv4.PROTOCOL_UDP && (((UDP) ipv4Packet.getPayload()).getDestinationPort() == 520)) {
 			// Handle RIP packets
-			handleRIPPacket(ipv4Packet);
+			handleRIPPacket(etherPacket, ipv4Packet);
 		} else {
 			// Handle non-RIP packets
 			handleNonRIPPacket(etherPacket, ipv4Packet);
@@ -193,14 +193,16 @@ public class Router extends Device {
 	}
 	
 	// Helper function to handle RIP packets
-	private void handleRIPPacket(IPv4 ipv4Packet) {
+	private void handleRIPPacket(Ethernet etherPacket, IPv4 ipv4Packet) {
 		// Extract the RIP packet from the UDP payload
 		UDP udpPacket = (UDP) ipv4Packet.getPayload();
 		RIPv2 ripPacket = (RIPv2) udpPacket.getPayload();
 		
 		// Check if the RIP packet is a req or res
 		if (ripPacket.getCommand() == RIPv2.COMMAND_REQUEST) {
-			// TODO respond with a direct request
+			Iface outIface = getOutgoingIface(etherPacket);
+			// send the response on the same interface as the request
+			sendRIPPacket(UNICAST_RES, etherPacket, outIface);
 		} else if (ripPacket.getCommand() == RIPv2.COMMAND_RESPONSE) {
 			// Process each entry in the RIP packet
 			for (RIPv2Entry ripEntry : ripPacket.getEntries()) {
@@ -301,7 +303,7 @@ public class Router extends Device {
 		return computedChecksum == checksum;
 	}
 
-	public void sendRIPPacket(int directive){
+	public void sendRIPPacket(int directive, Ethernet etherPacket, Iface iface){
 		if (directive == BROADCAST_REQ || directive == UNICAST_REQ) {
 			ripTable.setCommand((byte) 1);	// COMMAND_REQUEST
 		} else if (directive == BROADCAST_RES || directive == UNICAST_RES)	{

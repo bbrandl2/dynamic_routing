@@ -193,7 +193,7 @@ public class Router extends Device {
 	}
 	
 	// Helper function to handle RIP packets
-	private void handleRIPPacket(IPv4 ipv4Packet) {
+	private void handleRIPPacket(Ethernet etherPacket, IPv4 ipv4Packet) {
 		// Extract the RIP packet from the UDP payload
 		UDP udpPacket = (UDP) ipv4Packet.getPayload();
 		RIPv2 refTable = (RIPv2) udpPacket.getPayload();
@@ -213,8 +213,7 @@ public class Router extends Device {
 					thisEntry.setNextHopAddress(addr);
 					thisEntry.updateTime();
 				} else if ((thisEntry.getMetric() + 1) < ripEntry.getMetric()) {
-					// TODO
-					// Send a response back to other router indicating a shorter path
+					sendRIPPacket(3, ipv4Packet.getSourceAddress(), etherPacket.getM);
 				}
 			}
 		}
@@ -287,7 +286,7 @@ public class Router extends Device {
 		return computedChecksum == checksum;
 	}
 
-	public void sendRIPPacket(int directive){
+	public void sendRIPPacket(int directive, int addr, int macAddr){
 		if (directive == BROADCAST_REQ || directive == UNICAST_REQ) {
 			ripTable.setCommand((byte) 1);	// COMMAND_REQUEST
 		} else if (directive == BROADCAST_RES || directive == UNICAST_RES)	{

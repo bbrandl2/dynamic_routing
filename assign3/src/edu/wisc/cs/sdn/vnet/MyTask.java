@@ -12,6 +12,7 @@ public class MyTask extends TimerTask {
 
     public void run() {
         System.out.println("Sending unsolicited response...\n" + router.toString() + "\n");
-        router.sendResponse(true);
+        // Broadcast (true) responses (false)
+        router.sendRIPPacket(true, false);
     }
 }

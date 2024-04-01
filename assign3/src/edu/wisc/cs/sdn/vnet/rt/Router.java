@@ -100,43 +100,6 @@ public class Router extends Device {
 		System.out.println("----------------------------------");
 	}
 
-	private void sendRIPRequest() {
-        RIPv2 ripRequest = new RIPv2();
-        ripRequest.setCommand(RIPv2.COMMAND_REQUEST);
-        ripRequest.setEntries(null);
-        sendRIPPacket(ripRequest, null);
-    }
-
-	private void sendUnsolicitedRIPResponse() {
-        RIPv2 ripResponse = new RIPv2();
-        ripResponse.setCommand(RIPv2.COMMAND_RESPONSE);
-        ripResponse.setEntries(this.ripTable.getAllRIPEntries());
-        sendRIPPacket(ripResponse, null);
-    }
-
-	private void sendRIPPacket(RIPv2 ripPacket, Iface outIface) {
-        Ethernet ethernet = new Ethernet();
-        ethernet.setEtherType(Ethernet.TYPE_IPv4);
-        ethernet.setSourceMACAddress(outIface.getMacAddress().toBytes());
-        if (outIface != null) {
-            ethernet.setDestinationMACAddress(arpCache.lookup(outIface.getIpAddress()).getMac().toBytes());
-        } else {
-            ethernet.setDestinationMACAddress("FF:FF:FF:FF:FF:FF".getBytes());
-        }
-        IPv4 ipv4 = new IPv4();
-        ipv4.setSourceAddress(outIface.getIpAddress());
-        ipv4.setDestinationAddress("224.0.0.9");
-        ipv4.setTtl((byte) 64);
-        ipv4.setProtocol(IPv4.PROTOCOL_UDP);
-        UDP udp = new UDP();
-        udp.setSourcePort(UDP.RIP_PORT);
-        udp.setDestinationPort(UDP.RIP_PORT);
-        udp.setPayload(ripPacket);
-        ipv4.setPayload(udp);
-        ethernet.setPayload(ipv4);
-        sendPacket(ethernet, outIface);
-    }
-
 	/**
 	 * Handle an Ethernet packet received on a specific interface.
 	 * 

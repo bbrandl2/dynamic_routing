@@ -311,6 +311,7 @@ public class Router extends Device {
 		}
 
 		if (directive == BROADCAST_REQ || directive == BROADCAST_RES) {	// Send RIP response out of all interfaces, called every 10 seconds
+			if (etherPacket == null || outIface == null) System.out.println("NULL 314");
 			for (Map.Entry<String, Iface> iface : this.interfaces.entrySet()) {
 				// Create Ethernet packet
 				Ethernet etherpacket = new Ethernet();
@@ -335,9 +336,6 @@ public class Router extends Device {
 	
 				ipPacket.setPayload(udpPacket);
 	
-				if (directive == BROADCAST_REQ) ripTable.setCommand((byte) 1);
-				else ripTable.setCommand((byte) 2);
-
 				udpPacket.setPayload(ripTable);
 	
 				// Send packet out of current interface
@@ -345,6 +343,7 @@ public class Router extends Device {
 			}
 		}
 		else if (directive == UNICAST_REQ || directive == UNICAST_RES) {	// Send directed response
+			if (etherPacket == null || outIface == null) System.out.println("NULL 346");
 			Ethernet etherpacket = new Ethernet();
 			etherpacket.setDestinationMACAddress(etherPacket.getSourceMACAddress());
 			etherpacket.setEtherType(Ethernet.TYPE_IPv4);
@@ -366,9 +365,6 @@ public class Router extends Device {
 			udpPacket.setParent(ipPacket);
 
 			ipPacket.setPayload(udpPacket);
-
-			if (directive == UNICAST_REQ) ripTable.setCommand((byte) 1);
-			else ripTable.setCommand((byte) 2);
 
 			udpPacket.setPayload(ripTable);
 

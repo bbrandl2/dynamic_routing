@@ -28,15 +28,13 @@ public class Router extends Device {
     // Timer for sending RIP responses
     private Timer ripResponseTimer;
 
+	
+
     public Router(String host, DumpFile logfile) {
         super(host, logfile);
 		this.routeTable = new RouteTable();
 		this.arpCache = new ArpCache();
         this.ripResponseTimer = new Timer();
-        // Start RIPv2 only if a static route table is not provided
-        if (this.routeTable.isEmpty()) {
-            startRIPv2();
-        }
     }
 
 	/**
@@ -64,6 +62,15 @@ public class Router extends Device {
 		System.out.println("-------------------------------------------------");
 	}
 
+	public void loadRIPRouteTable(String routeTableFile) {
+		for (Map.Entry<String, Iface> entry : this.interfaces.entrySet()) {
+			Iface iface = entry.getValue();
+			int subnet = iface.getIpAddress() & iface.getSubnetMask();
+			this.routeTable.insert(subnet, 0, iface.getIpAddress(), iface);
+			this.ripTable.addEntry(new RIPv2Entry(subnet, iface.getSubnetMask(), 0, System.currentTimeMillis(), true));
+		}
+	}
+
 	/**
 	 * Load a new ARP cache from a file.
 	 * 
@@ -82,61 +89,97 @@ public class Router extends Device {
 		System.out.println("----------------------------------");
 	}
 
-    private void startRIPv2() {
-        // Add entries to the route table for subnets directly reachable via router interfaces
-        for (Iface iface : this.interfaces.values()) {
-            this.routeTable.insert(iface.getIpAddress(), iface.getSubnetMask(), 0, iface);
-        }
+	
+    public void startRIPv2() {
+		// load the RIP route table
+
+		for (Map.Entry<String, Iface> entry : this.interfaces.entrySet()) {
+			Iface iface = entry.getValue();
+			int subnet = iface.getIpAddress() & iface.getSubnetMask();
+			this.routeTable.insert(subnet, 0, iface.getIpAddress(), iface);
+			this.ripTable.addEntry(new RIPv2Entry(subnet, iface.getSubnetMask(), 0, System.currentTimeMillis(), true));
+		}
         // Send RIP requests out all router interfaces
         sendRIPRequest();
+
         // Schedule sending unsolicited RIP responses every 10 seconds
         this.ripResponseTimer.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
-                sendUnsolicitedRIPResponse();
+                sendRIPResponse(false);
             }
         }, RIP_RESPONSE_INTERVAL, RIP_RESPONSE_INTERVAL);
     }
 
-    private void sendRIPRequest() {
-        // Create and send RIP request packet out all router interfaces
-        RIPv2 ripRequest = new RIPv2();
-        ripRequest.setCommand(RIPv2.COMMAND_REQUEST);
-        ripRequest.setEntries(null); // Request for all routes
-        sendRIPPacket(ripRequest, null); // null iface means send out all interfaces
-    }
+    // In Router.java, add method to send RIP requests
+	private void sendRIPRequest() {
+		sendRIPResponse(true); // Send RIP requests out of all interfaces
+	}
 
-    private void sendUnsolicitedRIPResponse() {
-        // Create and send unsolicited RIP response packet out all router interfaces
-        RIPv2 ripResponse = new RIPv2();
-        ripResponse.setCommand(RIPv2.COMMAND_RESPONSE);
-        // Include all known routes in the response
-        ripResponse.setEntries(this.routeTable.getAllRIPEntries());
-        sendRIPPacket(ripResponse, null); // null iface means send out all interfaces
-    }
+	public void sendRIPResponse(boolean all) {
+		if (all) {
+			for (Map.Entry<String, Iface> entry : this.interfaces.entrySet()) {
+				Iface iface = entry.getValue();
+				Ethernet etherPacket = new Ethernet();
+				etherPacket.setDestinationMACAddress("FF:FF:FF:FF:FF:FF");
+				etherPacket.setSourceMACAddress(iface.getMacAddress().toBytes());
+				etherPacket.setEtherType(Ethernet.TYPE_IPv4);
 
-    private void sendRIPPacket(RIPv2 ripPacket, Iface outIface) {
-        Ethernet ethernet = new Ethernet();
-        ethernet.setEtherType(Ethernet.TYPE_IPv4);
-        ethernet.setSourceMACAddress(outIface.getMacAddress().toBytes());
-        if (outIface != null) {
-            ethernet.setDestinationMACAddress(arpCache.lookup(outIface.getIpAddress()).getMac().toBytes());
-        } else {
-            ethernet.setDestinationMACAddress("FF:FF:FF:FF:FF:FF".getBytes());
-        }
-        IPv4 ipv4 = new IPv4();
-        ipv4.setSourceAddress(outIface.getIpAddress());
-        ipv4.setDestinationAddress(RIP_MULTICAST_IP);
-        ipv4.setTtl((byte) 64);
-        ipv4.setProtocol(IPv4.PROTOCOL_UDP);
-        UDP udp = new UDP();
-        udp.setSourcePort(RIP_PORT);
-        udp.setDestinationPort(RIP_PORT);
-        udp.setPayload(ripPacket);
-        ipv4.setPayload(udp);
-        ethernet.setPayload(ipv4);
-        sendPacket(ethernet, outIface);
-    }
+				IPv4 ipPacket = new IPv4();
+				ipPacket.setSourceAddress(iface.getIpAddress());
+				ipPacket.setDestinationAddress("224.0.0.9");
+				ipPacket.setProtocol(IPv4.PROTOCOL_UDP);
+				ipPacket.setTtl((byte) 64);
+				etherPacket.setPayload(ipPacket);
+
+				UDP udpPacket = new UDP();
+				udpPacket.setSourcePort(UDP.RIP_PORT);
+				udpPacket.setDestinationPort(UDP.RIP_PORT);
+				udpPacket.setPayload(this.ripTable);
+				ipPacket.setPayload(udpPacket);
+
+				sendPacket(etherPacket, iface);
+			}
+		} else {
+			// Send directed RIP response
+			for (Map.Entry<String, Iface> entry : this.interfaces.entrySet()) {
+				Iface iface = entry.getValue();
+	
+				// Check if this interface has pending updates
+				if (iface.hasPendingRIPUpdates()) {
+					Ethernet etherPacket = new Ethernet();
+					etherPacket.setDestinationMACAddress(iface.getMacAddress().toBytes());
+					etherPacket.setSourceMACAddress(iface.getMacAddress().toBytes());
+					etherPacket.setEtherType(Ethernet.TYPE_IPv4);
+	
+					IPv4 ipPacket = new IPv4();
+					ipPacket.setSourceAddress(iface.getIpAddress());
+					ipPacket.setDestinationAddress(iface.getPendingRIPDestination());
+					ipPacket.setProtocol(IPv4.PROTOCOL_UDP);
+					ipPacket.setTtl((byte) 64);
+					etherPacket.setPayload(ipPacket);
+	
+					UDP udpPacket = new UDP();
+					udpPacket.setSourcePort(UDP.RIP_PORT);
+					udpPacket.setDestinationPort(UDP.RIP_PORT);
+	
+					RIPv2 ripPayload = new RIPv2();
+					// Add only the pending updates for this interface
+					ripPayload.addEntry(iface.getPendingRIPUpdate());
+	
+					udpPacket.setPayload(ripPayload);
+					ipPacket.setPayload(udpPacket);
+	
+					// Send the packet
+					sendPacket(etherPacket, iface);
+	
+					// Mark the pending updates as sent
+					iface.clearPendingRIPUpdates();
+				}
+			}
+		}
+	}
+
 
     @Override
     public void handlePacket(Ethernet etherPacket, Iface inIface) {
@@ -164,15 +207,14 @@ public class Router extends Device {
 			return;
 		}
 
+		// Handle RIP packet
 		if (ipv4Packet.getProtocol() == IPv4.PROTOCOL_UDP) {
-			UDP udpPacket = (UDP) ipv4Packet.getPayload();
-			if (udpPacket.getSourcePort() == RIP_PORT && udpPacket.getDestinationPort() == RIP_PORT) {
-				RIPv2 ripPacket = (RIPv2) udpPacket.getPayload();
-				// Handle RIP packet
-				handleRIPPacket(ripPacket, inIface);
-				return;
-			}
-		}
+            UDP udpPacket = (UDP) ipv4Packet.getPayload();
+            if (udpPacket.getSourcePort() == UDP.RIP_PORT && udpPacket.getDestinationPort() == UDP.RIP_PORT) {
+                handleRIPPacket(udpPacket, inIface);
+                return;
+            }
+        }
 
 		// Determine whether the packet is destined for one of the router's interfaces
 		for (Map.Entry<String, Iface> iface : this.interfaces.entrySet()) {
@@ -226,12 +268,18 @@ public class Router extends Device {
                 this.routeTable.resetTimeout(entry);
             }
         }
-        // Send necessary RIP response packets
-        if (ripPacket.getCommand() == RIPv2.COMMAND_REQUEST) {
-            // Send RIP response if request received
-            sendUnsolicitedRIPResponse();
-        }
+		// Send necessary RIP response packets
+    	sendRIPResponse(false);
     }
+
+	private void timeoutRouteEntries() {
+		long currentTime = System.currentTimeMillis();
+		for (RouteEntry entry : this.routeTable.getAllEntries()) {
+			if (!entry.isDirectlyConnected() && currentTime - entry.getLastUpdateTime() > 30000) {
+				this.routeTable.remove(entry.getDestinationAddress(), entry.getMask());
+			}
+		}
+	}
 
 	private boolean verifyChecksum(IPv4 ipv4Packet) {
 		int headerLength = ipv4Packet.getHeaderLength();

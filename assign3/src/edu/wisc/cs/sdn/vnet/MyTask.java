@@ -15,7 +15,7 @@ public class MyTask extends TimerTask {
     public void run() {
         if (frequency == 10){
             System.out.println("Sending unsolicited response...\n" + router.toString() + "\n");
-            router.sendRIPPacket(Router.BROADCAST_RES);
+            router.sendRIPPacket(Router.BROADCAST_RES, null, 0, null);
         }
         else if (frequency == 30){
             System.out.println("Update time check...\n");

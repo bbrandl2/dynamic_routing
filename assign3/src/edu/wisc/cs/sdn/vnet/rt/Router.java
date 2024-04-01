@@ -196,25 +196,30 @@ public class Router extends Device {
 	private void handleRIPPacket(IPv4 ipv4Packet) {
 		// Extract the RIP packet from the UDP payload
 		UDP udpPacket = (UDP) ipv4Packet.getPayload();
-		RIPv2 refTable = (RIPv2) udpPacket.getPayload();
-	
-		// Process each entry in the RIP packet
-		for (RIPv2Entry ripEntry : refTable.getEntries()) {
-			int addr = ripEntry.getAddress();
-			RIPv2Entry thisEntry = this.ripTable.lookup(addr);
-	
-			if (thisEntry == null) {
-				// Add a new entry to the RIP table if not already present
-				RIPv2Entry newEntry = new RIPv2Entry(addr, ripEntry.getSubnetMask(), ripEntry.getMetric() + 1, System.currentTimeMillis(), false);
-				ripTable.addEntry(newEntry);
-			} else {
-				// Update existing entry if a shorter path is found
-				if ((ripEntry.getMetric() + 1) < thisEntry.getMetric()) {
-					thisEntry.setNextHopAddress(addr);
-					thisEntry.updateTime();
-				} else if ((thisEntry.getMetric() + 1) < ripEntry.getMetric()) {
-					// TODO
-					// Send a response back to other router indicating a shorter path
+		RIPv2 ripPacket = (RIPv2) udpPacket.getPayload();
+		
+		// Check if the RIP packet is a req or res
+		if (ripPacket.getCommand() == RIPv2.COMMAND_REQUEST) {
+			// TODO respond with a direct request
+		} else if (ripPacket.getCommand() == RIPv2.COMMAND_RESPONSE) {
+			// Process each entry in the RIP packet
+			for (RIPv2Entry ripEntry : ripPacket.getEntries()) {
+				int addr = ripEntry.getAddress();
+				RIPv2Entry thisEntry = this.ripTable.lookup(addr);
+		
+				if (thisEntry == null) {
+					// Add a new entry to the RIP table if not already present
+					RIPv2Entry newEntry = new RIPv2Entry(addr, ripEntry.getSubnetMask(), ripEntry.getMetric() + 1, System.currentTimeMillis(), false);
+					ripTable.addEntry(newEntry);
+				} else {
+					// Update existing entry if a shorter path is found
+					if ((ripEntry.getMetric() + 1) < thisEntry.getMetric()) {
+						thisEntry.setNextHopAddress(addr);
+						thisEntry.updateTime();
+					} else if ((thisEntry.getMetric() + 1) < ripEntry.getMetric()) {
+						// TODO
+						// Send a response back to other router indicating a shorter path
+					}
 				}
 			}
 		}

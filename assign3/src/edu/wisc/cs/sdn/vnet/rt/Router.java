@@ -135,7 +135,7 @@ public class Router extends Device {
 		} else {
 			handleDynamicRouting(etherPacket, ipv4Packet);
 		}
-		
+
 		// Print a message indicating that the router sent a packet
 		System.out.println("*** -> Router Sent packet: " +
 				etherPacket.toString().replace("\n", "\n\t"));
@@ -238,9 +238,18 @@ public class Router extends Device {
 		if (nextHopMac == null) {
 			return;
 		}
-	
-		// Get the outgoing interface based on the source IP address of the packet
-		Iface outIface = getOutgoingInterface(ipv4Packet.getSourceAddress());
+		
+		Iface outIface = null;
+		// Get the outgoing interface based on the next hop IP address of the packet
+		for (Iface iface : this.interfaces.values()) {
+			if ((iface.getSubnetMask() & iface.getIpAddress()) == (iface.getSubnetMask() & nextHopIp)) {
+				outIface = iface;
+			}
+		}
+		if (outIface == null) {
+			System.out.println("Packet dropped.\n");
+			return;
+		}
 	
 		// Update the Ethernet header with the MAC addresses
 		etherPacket.setDestinationMACAddress(nextHopMac.toBytes());
@@ -252,15 +261,6 @@ public class Router extends Device {
 		// Send the packet out the correct interface
 		this.sendPacket(etherPacket, outIface);
 	}
-	
-	private Iface getOutgoingInterface(int ipAddress) {
-		for (Iface iface : this.interfaces.values()) {
-			if (iface.getIpAddress() == ipAddress) {
-				return iface;
-			}
-		}
-		return null;
-	}	
 
 	private boolean verifyChecksum(IPv4 ipv4Packet) {
 		int headerLength = ipv4Packet.getHeaderLength();

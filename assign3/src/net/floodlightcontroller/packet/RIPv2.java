@@ -2,6 +2,9 @@ package net.floodlightcontroller.packet;
 
 import java.nio.ByteBuffer;
 import java.util.List;
+
+import edu.wisc.cs.sdn.vnet.rt.RouteEntry;
+
 import java.util.LinkedList;
 
 /**
@@ -23,6 +26,44 @@ public class RIPv2 extends BasePacket
         this.version = VERSION;
         this.entries = new LinkedList<RIPv2Entry>();
     }
+
+    public RIPv2Entry lookup(int ip) {
+		synchronized (this.entries) {
+			int longestMatchLength = -1;
+			RIPv2Entry longestMatchEntry = null;
+	
+			for (RIPv2Entry entry : this.entries) {
+				int entryIP = entry.getAddress();
+				int entryMask = entry.getSubnetMask();
+				int entryNetworkAddress = entryIP & entryMask;
+				int givenNetworkAddress = ip & entryMask;
+	
+				// Check if the entry's network address matches the given IP
+				if (entryNetworkAddress == givenNetworkAddress) {
+					int entryPrefixLength = getPrefixLength(entryMask);
+					// If the current match has a longer prefix, update the longest match
+					if (entryPrefixLength > longestMatchLength) {
+						longestMatchLength = entryPrefixLength;
+						longestMatchEntry = entry;
+					}
+				}
+			}
+			
+			return longestMatchEntry;
+		}
+	}
+
+    private int getPrefixLength(int mask) {
+		int prefixLength = 0;
+		for (int i = 31; i >= 0; i--) {
+			if (((mask >> i) & 1) == 1) {
+				prefixLength++;
+			} else {
+				break;
+			}
+		}
+		return prefixLength;
+	}
 
 	public void setEntries(List<RIPv2Entry> entries)
 	{ this.entries = entries; }

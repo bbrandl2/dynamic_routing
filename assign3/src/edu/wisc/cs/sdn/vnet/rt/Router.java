@@ -174,7 +174,7 @@ public class Router extends Device {
 			this.sendPacket(etherPacket, routeEntry.getInterface());
 		}
 		else { // Dynamic route table
-			if ( (ipv4Packet.getProtocol() == IPv4.PROTOCOL_UDP) && (((UDP) ipv4Packet.getPayload()).getDestinationPort() == 520) ){
+			if ( (ipv4Packet.getProtocol() == IPv4.PROTOCOL_UDP) && (((UDP) ipv4Packet.getPayload()).getDestinationPort() == 520) ){	// RIP packet
 				System.out.println("\n***RIP PACKET***\n");
 
 				UDP udpPacket = (UDP) ipv4Packet.getPayload();
@@ -210,7 +210,7 @@ public class Router extends Device {
 						// Metric as current metric + 1
 				}
 			}
-			else {
+			else {	// Non RIP packet
 				// Do we need to maintain regular route table?
 
 				// Regular packet handling here:
@@ -286,9 +286,19 @@ public class Router extends Device {
 			}
 		}
 		else {	// Send directed response
-
+			
 		}
 		
 	}
 
 }
+
+/*
+ * TODO
+ * Send a request out of all interfaces upon initialization
+ * Distinguish between requests and responses in handlePacket
+ * Handle non-RIP packet forwarding for dynamic route tables
+ * Handle 30 second RIP entry checks:
+ * 	Do we check all of a router's entries every 30 seconds or
+ * 	somehow have route entries individually check their update status?
+ */

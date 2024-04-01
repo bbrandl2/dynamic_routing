@@ -33,17 +33,43 @@ public class RouteTable
 	 * @param ip IP address
 	 * @return the matching route entry, null if none exists
 	 */
-	public RouteEntry lookup(int ip)
-	{
-		synchronized(this.entries)
-		{
-			/*****************************************************************/
-			/* TODO: Find the route entry with the longest prefix match	  */
+	public RouteEntry lookup(int ip) {
+		synchronized (this.entries) {
+			int longestMatchLength = -1;
+			RouteEntry longestMatchEntry = null;
+	
+			for (RouteEntry entry : this.entries) {
+				int entryIP = entry.getDestinationAddress();
+				int entryMask = entry.getMaskAddress();
+				int entryNetworkAddress = entryIP & entryMask;
+				int givenNetworkAddress = ip & entryMask;
+	
+				// Check if the entry's network address matches the given IP
+				if (entryNetworkAddress == givenNetworkAddress) {
+					int entryPrefixLength = getPrefixLength(entryMask);
+					// If the current match has a longer prefix, update the longest match
+					if (entryPrefixLength > longestMatchLength) {
+						longestMatchLength = entryPrefixLength;
+						longestMatchEntry = entry;
+					}
+				}
+			}
 			
-			return null;
-			
-			/*****************************************************************/
+			return longestMatchEntry;
 		}
+	}
+	
+	// Helper function to calculate the prefix length from the subnet mask
+	private int getPrefixLength(int mask) {
+		int prefixLength = 0;
+		for (int i = 31; i >= 0; i--) {
+			if (((mask >> i) & 1) == 1) {
+				prefixLength++;
+			} else {
+				break;
+			}
+		}
+		return prefixLength;
 	}
 	
 	/**

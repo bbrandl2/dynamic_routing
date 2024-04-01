@@ -1,45 +1,43 @@
-package edu.wisc.cs.sdn.vnet.rt;
-
-import java.nio.ByteBuffer;
 import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import edu.wisc.cs.sdn.vnet.Device;
 import edu.wisc.cs.sdn.vnet.DumpFile;
 import edu.wisc.cs.sdn.vnet.Iface;
-
 import net.floodlightcontroller.packet.Ethernet;
-import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.MACAddress;
+import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.packet.RIPv2;
 import net.floodlightcontroller.packet.RIPv2Entry;
-import net.floodlightcontroller.packet.UDP;
 
-/**
- * @author Aaron Gember-Jacobson and Anubhavnidhi Abhashkumar
- */
 public class Router extends Device {
-	/** Routing table for the router */
+    // Define constants
+    private static final int RIP_PORT = 520;
+    private static final String RIP_MULTICAST_IP = "224.0.0.9";
+    private static final long RIP_RESPONSE_INTERVAL = 10 * 1000; // 10 seconds in milliseconds
+    private static final long ROUTE_TIMEOUT = 30 * 1000; // 30 seconds in milliseconds
+
+		/** Routing table for the router */
 	private RouteTable routeTable;
 
 	/** ARP cache for the router */
 	private ArpCache arpCache;
 
-	private boolean isStatic;
+    // Timer for sending RIP responses
+    private Timer ripResponseTimer;
 
-	private RIPv2 ripTable;
-
-	/**
-	 * Creates a router for a specific host.
-	 * 
-	 * @param host hostname for the router
-	 */
-	public Router(String host, DumpFile logfile) {
-		super(host, logfile);
+    public Router(String host, DumpFile logfile) {
+        super(host, logfile);
 		this.routeTable = new RouteTable();
 		this.arpCache = new ArpCache();
-		this.ripTable = new RIPv2();
-	}
+        this.ripResponseTimer = new Timer();
+        // Start RIPv2 only if a static route table is not provided
+        if (this.routeTable.isEmpty()) {
+            startRIPv2();
+        }
+    }
 
 	/**
 	 * @return routing table for the router
@@ -48,40 +46,22 @@ public class Router extends Device {
 		return this.routeTable;
 	}
 
-	// Set static RT variable
-	public void setStatic(boolean b){
-		this.isStatic = b;
-	}
-
 	/**
 	 * Load a new routing table from a file.
 	 * 
 	 * @param routeTableFile the name of the file containing the routing table
 	 */
 	public void loadRouteTable(String routeTableFile) {
-		if (isStatic) {
-			if (!routeTable.load(routeTableFile, this)) {
-				System.err.println("Error setting up routing table from file "
-						+ routeTableFile);
-				System.exit(1);
-			}
+		if (!routeTable.load(routeTableFile, this)) {
+			System.err.println("Error setting up routing table from file "
+					+ routeTableFile);
+			System.exit(1);
+		}
 
-			System.out.println("Loaded static route table");
-			System.out.println("-------------------------------------------------");
-			System.out.print(this.routeTable.toString());
-			System.out.println("-------------------------------------------------");
-		}
-		else {	
-			// Add entries to RIP table reachable by router
-			// Do we need to maintain a route table with non-RIP entries?
-			for (Map.Entry<String, Iface> iface : this.interfaces.entrySet()) {
-				ripTable.addEntry(new RIPv2Entry(iface.getValue().getIpAddress(), iface.getValue().getSubnetMask(), 0, System.currentTimeMillis(), true));
-			}
-			System.out.println("Loaded dynamic route table");
-			System.out.println("-------------------------------------------------");
-			System.out.print(this.ripTable.toString());
-			System.out.println("-------------------------------------------------");
-		}
+		System.out.println("Loaded static route table");
+		System.out.println("-------------------------------------------------");
+		System.out.print(this.routeTable.toString());
+		System.out.println("-------------------------------------------------");
 	}
 
 	/**
@@ -102,14 +82,64 @@ public class Router extends Device {
 		System.out.println("----------------------------------");
 	}
 
-	/**
-	 * Handle an Ethernet packet received on a specific interface.
-	 * 
-	 * @param etherPacket the Ethernet packet that was received
-	 * @param inIface     the interface on which the packet was received
-	 */
+    private void startRIPv2() {
+        // Add entries to the route table for subnets directly reachable via router interfaces
+        for (Iface iface : this.interfaces.values()) {
+            this.routeTable.insert(iface.getIpAddress(), iface.getSubnetMask(), 0, iface);
+        }
+        // Send RIP requests out all router interfaces
+        sendRIPRequest();
+        // Schedule sending unsolicited RIP responses every 10 seconds
+        this.ripResponseTimer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                sendUnsolicitedRIPResponse();
+            }
+        }, RIP_RESPONSE_INTERVAL, RIP_RESPONSE_INTERVAL);
+    }
 
-	public void handlePacket(Ethernet etherPacket, Iface inIface) {
+    private void sendRIPRequest() {
+        // Create and send RIP request packet out all router interfaces
+        RIPv2 ripRequest = new RIPv2();
+        ripRequest.setCommand(RIPv2.COMMAND_REQUEST);
+        ripRequest.setEntries(null); // Request for all routes
+        sendRIPPacket(ripRequest, null); // null iface means send out all interfaces
+    }
+
+    private void sendUnsolicitedRIPResponse() {
+        // Create and send unsolicited RIP response packet out all router interfaces
+        RIPv2 ripResponse = new RIPv2();
+        ripResponse.setCommand(RIPv2.COMMAND_RESPONSE);
+        // Include all known routes in the response
+        ripResponse.setEntries(this.routeTable.getAllRIPEntries());
+        sendRIPPacket(ripResponse, null); // null iface means send out all interfaces
+    }
+
+    private void sendRIPPacket(RIPv2 ripPacket, Iface outIface) {
+        Ethernet ethernet = new Ethernet();
+        ethernet.setEtherType(Ethernet.TYPE_IPv4);
+        ethernet.setSourceMACAddress(outIface.getMacAddress().toBytes());
+        if (outIface != null) {
+            ethernet.setDestinationMACAddress(arpCache.lookup(outIface.getIpAddress()).getMac().toBytes());
+        } else {
+            ethernet.setDestinationMACAddress("FF:FF:FF:FF:FF:FF".getBytes());
+        }
+        IPv4 ipv4 = new IPv4();
+        ipv4.setSourceAddress(outIface.getIpAddress());
+        ipv4.setDestinationAddress(RIP_MULTICAST_IP);
+        ipv4.setTtl((byte) 64);
+        ipv4.setProtocol(IPv4.PROTOCOL_UDP);
+        UDP udp = new UDP();
+        udp.setSourcePort(RIP_PORT);
+        udp.setDestinationPort(RIP_PORT);
+        udp.setPayload(ripPacket);
+        ipv4.setPayload(udp);
+        ethernet.setPayload(ipv4);
+        sendPacket(ethernet, outIface);
+    }
+
+    @Override
+    public void handlePacket(Ethernet etherPacket, Iface inIface) {
 		System.out.println("*** -> Router Received packet: " +
 				etherPacket.toString().replace("\n", "\n\t"));
 
@@ -134,6 +164,16 @@ public class Router extends Device {
 			return;
 		}
 
+		if (ipv4Packet.getProtocol() == IPv4.PROTOCOL_UDP) {
+			UDP udpPacket = (UDP) ipv4Packet.getPayload();
+			if (udpPacket.getSourcePort() == RIP_PORT && udpPacket.getDestinationPort() == RIP_PORT) {
+				RIPv2 ripPacket = (RIPv2) udpPacket.getPayload();
+				// Handle RIP packet
+				handleRIPPacket(ripPacket, inIface);
+				return;
+			}
+		}
+
 		// Determine whether the packet is destined for one of the router's interfaces
 		for (Map.Entry<String, Iface> iface : this.interfaces.entrySet()) {
 			// Drop packet if it matches a router interface IP
@@ -141,89 +181,57 @@ public class Router extends Device {
 				return;
 		}
 
+		// Lookup the RouteEntry
+		RouteEntry routeEntry = this.routeTable.lookup(ipv4Packet.getDestinationAddress());
 
-		if (this.isStatic){ // Static route table
-			// Lookup the RouteEntry
-			RouteEntry routeEntry = this.routeTable.lookup(ipv4Packet.getDestinationAddress());
-
-			// Drop the packet if no matching entry found
-			if (routeEntry == null) {
-				return;
-			}
-
-			// Lookup the next-hop IP address
-			int nextHopIp = routeEntry.getGatewayAddress();
-			if (nextHopIp == 0) {
-				nextHopIp = ipv4Packet.getDestinationAddress();
-			}
-
-			// Lookup MAC address corresponding to next-hop IP address
-			MACAddress nextHopMac = this.arpCache.lookup(nextHopIp).getMac();
-			if (nextHopMac == null) {
-				return; // Drop the packet if MAC address not found
-			}
-
-			// Update Ethernet header
-			etherPacket.setDestinationMACAddress(nextHopMac.toBytes());
-			etherPacket.setSourceMACAddress(routeEntry.getInterface().getMacAddress().toBytes());
-
-			ipv4Packet.setChecksum((short)0);
-			ipv4Packet.serialize();
-
-			// Send the packet out the correct interface
-			this.sendPacket(etherPacket, routeEntry.getInterface());
+		// Drop the packet if no matching entry found
+		if (routeEntry == null) {
+			return;
 		}
-		else { // Dynamic route table
-			if ( (ipv4Packet.getProtocol() == IPv4.PROTOCOL_UDP) && (((UDP) ipv4Packet.getPayload()).getDestinationPort() == 520) ){	// RIP packet
-				System.out.println("\n***RIP PACKET***\n");
 
-				UDP udpPacket = (UDP) ipv4Packet.getPayload();
-				RIPv2 refTable = (RIPv2) udpPacket.getPayload();
-
-				for (RIPv2Entry ripEntry : refTable.getEntries()){
-					int addr = ripEntry.getAddress();
-					RIPv2Entry thisEntry = this.ripTable.lookup(addr);
-
-					if (thisEntry == null){ // Corresponding entry not in table
-						RIPv2Entry newEntry = new RIPv2Entry(addr, ripEntry.getSubnetMask(), ripEntry.getMetric() + 1, System.currentTimeMillis(), false);
-						ripTable.addEntry(newEntry);
-					}
-					else {	// Entry already exists
-						if ((ripEntry.getMetric() + 1) < thisEntry.getMetric()){ // Incoming entry has lower cost path
-							thisEntry.setNextHopAddress(addr);
-							thisEntry.updateTime();
-						}
-						else if ((thisEntry.getMetric() + 1) < ripEntry.getMetric()){
-							// Send a response back to other router indicating a shorter path
-						}
-					}
-
-					// ^^^^^^^^^^^^^^^
-					// if entry exists
-						// Check if (metric + 1) < current entry's cost
-							// Update entry to route through new router
-							// Update timestamp
-						// else if (current entry cost + 1) < metric
-							// Send a response back to other router indicating a shorter path
-					// else
-						// Create new entry with next hop as interface IP of router w/ shorter path
-						// Metric as current metric + 1
-				}
-			}
-			else {	// Non RIP packet
-				// Do we need to maintain regular route table?
-
-				// Regular packet handling here:
-				// Lookup destination address in RIP table
-				// Update etherpacket based on the lookup
-				// Send packet out correct interface
-			}
+		// Lookup the next-hop IP address
+		int nextHopIp = routeEntry.getGatewayAddress();
+		if (nextHopIp == 0) {
+			nextHopIp = ipv4Packet.getDestinationAddress();
 		}
-		
+
+		// Lookup MAC address corresponding to next-hop IP address
+		MACAddress nextHopMac = this.arpCache.lookup(nextHopIp).getMac();
+		if (nextHopMac == null) {
+			return; // Drop the packet if MAC address not found
+		}
+
+		// Update Ethernet header
+		etherPacket.setDestinationMACAddress(nextHopMac.toBytes());
+		etherPacket.setSourceMACAddress(routeEntry.getInterface().getMacAddress().toBytes());
+
+		ipv4Packet.setChecksum((short)0);
+		ipv4Packet.serialize();
+
+		// Send the packet out the correct interface
+		this.sendPacket(etherPacket, routeEntry.getInterface());
 
 		System.out.println("*** -> Router Sent packet: " +
 				etherPacket.toString().replace("\n", "\n\t"));
-	}
+        // Other packet handling code
+    }
+
+    private void handleRIPPacket(RIPv2 ripPacket, Iface inIface) {
+        // Update route table based on received RIP packet
+        for (RIPv2Entry entry : ripPacket.getEntries()) {
+            // Update route table with RIP entries
+            boolean updated = this.routeTable.update(entry, inIface);
+            if (updated) {
+                // Reset timeout for this route
+                this.routeTable.resetTimeout(entry);
+            }
+        }
+        // Send necessary RIP response packets
+        if (ripPacket.getCommand() == RIPv2.COMMAND_REQUEST) {
+            // Send RIP response if request received
+            sendUnsolicitedRIPResponse();
+        }
+    }
 
 	private boolean verifyChecksum(IPv4 ipv4Packet) {
 		int headerLength = ipv4Packet.getHeaderLength();
@@ -249,56 +257,4 @@ public class Router extends Device {
 		// Compare computed checksum with packet's checksum
 		return computedChecksum == checksum;
 	}
-
-	public void sendResponse(boolean all){
-		if (all){	// Send RIP response out of all interfaces, called every 10 seconds
-			for (Map.Entry<String, Iface> iface : this.interfaces.entrySet()) {
-				// Create Ethernet packet
-				Ethernet etherpacket = new Ethernet();
-				etherpacket.setDestinationMACAddress("FF:FF:FF:FF:FF:FF");
-				etherpacket.setEtherType(Ethernet.TYPE_IPv4);
-				etherpacket.setSourceMACAddress(iface.getValue().getMacAddress().toString());
-	
-				// Create IPv4 packet, add as Ether payload
-				IPv4 ipPacket = new IPv4();
-				ipPacket.setProtocol(IPv4.PROTOCOL_UDP);
-				ipPacket.setSourceAddress(iface.getValue().getIpAddress());
-				ipPacket.setDestinationAddress("224.0.0.9");
-				ipPacket.setParent(etherpacket);
-	
-				etherpacket.setPayload(ipPacket);
-	
-				// Create UDP packet, add as IP payload
-				UDP udpPacket = new UDP();
-				udpPacket.setDestinationPort((short) 520);
-				udpPacket.setSourcePort((short) 520);
-				udpPacket.setParent(ipPacket);
-	
-				ipPacket.setPayload(udpPacket);
-	
-				// Add RIPv2 packet (route table) as UDP payload
-				// ripTable.setParent(udpPacket); // Is this needed?
-	
-				udpPacket.setPayload(ripTable);
-	
-				// Send packet out of current interface
-				this.sendPacket(etherpacket, iface.getValue());
-			}
-		}
-		else {	// Send directed response
-			
-		}
-		
-	}
-
 }
-
-/*
- * TODO
- * Send a request out of all interfaces upon initialization
- * Distinguish between requests and responses in handlePacket
- * Handle non-RIP packet forwarding for dynamic route tables
- * Handle 30 second RIP entry checks:
- * 	Do we check all of a router's entries every 30 seconds or
- * 	somehow have route entries individually check their update status?
- */

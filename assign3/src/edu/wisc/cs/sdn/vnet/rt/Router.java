@@ -193,7 +193,7 @@ public class Router extends Device {
 	}
 	
 	// Helper function to handle RIP packets
-	private void handleRIPPacket(Ethernet etherpacket, IPv4 ipv4Packet) {
+	private void handleRIPPacket(Ethernet etherPacket, IPv4 ipv4Packet) {
 		// Extract the RIP packet from the UDP payload
 		UDP udpPacket = (UDP) ipv4Packet.getPayload();
 		RIPv2 ripPacket = (RIPv2) udpPacket.getPayload();

@@ -112,7 +112,7 @@ public class Main
 
 			// Update check
 			task30 = new MyTask((Router)dev, 30);
-			timer.schedule(task30, 0, 1000);
+			timer.schedule(task30, 0, 2000);
 		}
 
 		

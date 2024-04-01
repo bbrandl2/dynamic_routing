@@ -76,6 +76,10 @@ public class RIPv2Entry
     public void setMetric(int metric)
     { this.metric = metric; }
 
+    public long getTime(){
+        return this.timestamp;
+    }
+
     public void updateTime(){
         this.timestamp = System.currentTimeMillis();
     }

@@ -181,7 +181,24 @@ public class Router extends Device {
 				RIPv2 refTable = (RIPv2) udpPacket.getPayload();
 
 				for (RIPv2Entry ripEntry : refTable.getEntries()){
-					// Look up entry in ripTable (create lookup function in RIPv2?)
+					int addr = ripEntry.getAddress();
+					RIPv2Entry thisEntry = this.ripTable.lookup(addr);
+
+					if (thisEntry == null){ // Corresponding entry not in table
+						RIPv2Entry newEntry = new RIPv2Entry(addr, ripEntry.getSubnetMask(), ripEntry.getMetric() + 1, System.currentTimeMillis(), false);
+						ripTable.addEntry(newEntry);
+					}
+					else {	// Entry already exists
+						if ((ripEntry.getMetric() + 1) < thisEntry.getMetric()){ // Incoming entry has lower cost path
+							thisEntry.setNextHopAddress(addr);
+							thisEntry.updateTime();
+						}
+						else if ((thisEntry.getMetric() + 1) < ripEntry.getMetric()){
+							// Send a response back to other router indicating a shorter path
+						}
+					}
+
+					// ^^^^^^^^^^^^^^^
 					// if entry exists
 						// Check if (metric + 1) < current entry's cost
 							// Update entry to route through new router
@@ -233,40 +250,45 @@ public class Router extends Device {
 		return computedChecksum == checksum;
 	}
 
-	public void sendResponse(){
-		// Send RIP response out of all interfaces, called every 10 seconds
-		for (Map.Entry<String, Iface> iface : this.interfaces.entrySet()) {
-			// Create Ethernet packet
-			Ethernet etherpacket = new Ethernet();
-			etherpacket.setDestinationMACAddress("FF:FF:FF:FF:FF:FF");
-			etherpacket.setEtherType(Ethernet.TYPE_IPv4);
-			etherpacket.setSourceMACAddress(iface.getValue().getMacAddress().toString());
-
-			// Create IPv4 packet, add as Ether payload
-			IPv4 ipPacket = new IPv4();
-			ipPacket.setProtocol(IPv4.PROTOCOL_UDP);
-			ipPacket.setSourceAddress(iface.getValue().getIpAddress());
-			ipPacket.setDestinationAddress("224.0.0.9");
-			ipPacket.setParent(etherpacket);
-
-			etherpacket.setPayload(ipPacket);
-
-			// Create UDP packet, add as IP payload
-			UDP udpPacket = new UDP();
-			udpPacket.setDestinationPort((short) 520);
-			udpPacket.setSourcePort((short) 520);
-			udpPacket.setParent(ipPacket);
-
-			ipPacket.setPayload(udpPacket);
-
-			// Add RIPv2 packet (route table) as UDP payload
-			// ripTable.setParent(udpPacket); // Is this needed?
-
-			udpPacket.setPayload(ripTable);
-
-			// Send packet out of current interface
-			this.sendPacket(etherpacket, iface.getValue());
+	public void sendResponse(boolean all){
+		if (all){	// Send RIP response out of all interfaces, called every 10 seconds
+			for (Map.Entry<String, Iface> iface : this.interfaces.entrySet()) {
+				// Create Ethernet packet
+				Ethernet etherpacket = new Ethernet();
+				etherpacket.setDestinationMACAddress("FF:FF:FF:FF:FF:FF");
+				etherpacket.setEtherType(Ethernet.TYPE_IPv4);
+				etherpacket.setSourceMACAddress(iface.getValue().getMacAddress().toString());
+	
+				// Create IPv4 packet, add as Ether payload
+				IPv4 ipPacket = new IPv4();
+				ipPacket.setProtocol(IPv4.PROTOCOL_UDP);
+				ipPacket.setSourceAddress(iface.getValue().getIpAddress());
+				ipPacket.setDestinationAddress("224.0.0.9");
+				ipPacket.setParent(etherpacket);
+	
+				etherpacket.setPayload(ipPacket);
+	
+				// Create UDP packet, add as IP payload
+				UDP udpPacket = new UDP();
+				udpPacket.setDestinationPort((short) 520);
+				udpPacket.setSourcePort((short) 520);
+				udpPacket.setParent(ipPacket);
+	
+				ipPacket.setPayload(udpPacket);
+	
+				// Add RIPv2 packet (route table) as UDP payload
+				// ripTable.setParent(udpPacket); // Is this needed?
+	
+				udpPacket.setPayload(ripTable);
+	
+				// Send packet out of current interface
+				this.sendPacket(etherpacket, iface.getValue());
+			}
 		}
+		else {	// Send directed response
+
+		}
+		
 	}
 
 }

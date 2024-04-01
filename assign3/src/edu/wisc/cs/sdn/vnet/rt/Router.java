@@ -220,7 +220,7 @@ public class Router extends Device {
 						thisEntry.updateTime();
 					} else if ((thisEntry.getMetric() + 1) < ripEntry.getMetric()) {
 						Iface out = getOutgoingIface(etherPacket);
-						this.sendRIPPacket(3, etherPacket, ipv4Packet.getSourceAddress(), out);
+						this.sendRIPPacket(UNICAST_RES, etherPacket, ipv4Packet.getSourceAddress(), out);
 					}
 				}
 			}

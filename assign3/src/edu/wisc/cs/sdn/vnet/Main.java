@@ -97,8 +97,8 @@ public class Main
 				((Router)dev).loadRouteTable(routeTableFile); 
 			}
 			else { // Static route table not provided; use RIP
-				((Router)dev).startRIPv2();
-				((Router)dev).loadRIPRouteTable(routeTableFile); 
+				((Router)dev).setStatic(false);
+				((Router)dev).loadRouteTable(routeTableFile); 
 			}
 			
 			// Read static ACP cache

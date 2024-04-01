@@ -72,13 +72,6 @@ public class Router extends Device {
             System.out.println("-------------------------------------------------");
             System.out.print(this.ripTable.toString());
             System.out.println("-------------------------------------------------");
-            sendRIPRequest();
-            ripResponseTimer.scheduleAtFixedRate(new TimerTask() {
-                @Override
-                public void run() {
-                    sendUnsolicitedRIPResponse();
-                }
-            }, 10000, 10000);
         }
 	}
 
@@ -198,14 +191,6 @@ public class Router extends Device {
 				}
 			}
 			else {	// Non RIP packet
-				// Do we need to maintain regular route table?
-
-				// Regular packet handling here:
-				// Lookup destination address in RIP table
-				// Update etherpacket based on the lookup
-				// Send packet out correct interface
-				// Lookup the RouteEntry
-
 				RIPv2Entry RIProuteEntry = this.ripTable.lookup(ipv4Packet.getDestinationAddress());
 
 				// Drop the packet if no matching entry found

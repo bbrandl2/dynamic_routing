@@ -112,7 +112,7 @@ public class Router extends Device {
 		if (etherPacket.getEtherType() != Ethernet.TYPE_IPv4) {
 			return;
 		}
-	
+		System.out.println("115");
 		// Extract the IPv4 packet from the Ethernet frame
 		IPv4 ipv4Packet = (IPv4) etherPacket.getPayload();
 	
@@ -120,7 +120,7 @@ public class Router extends Device {
 		if (!verifyChecksum(ipv4Packet)) {
 			return;
 		}
-	
+		System.out.println("123");
 		// Decrement the TTL of the IPv4 packet
 		ipv4Packet.setTtl((byte) (ipv4Packet.getTtl() - 1));
 	
@@ -128,7 +128,7 @@ public class Router extends Device {
 		if (ipv4Packet.getTtl() == 0) {
 			return;
 		}
-	
+		System.out.println("131");
 		// Handle the packet based on the routing type (static or dynamic)
 		if (this.isStatic) {
 			handleStaticRouting(etherPacket, ipv4Packet);
@@ -144,19 +144,20 @@ public class Router extends Device {
 	// Helper function to handle static routing for IPv4 packets
 	private void handleStaticRouting(Ethernet etherPacket, IPv4 ipv4Packet) {
 		// Drop the packet if it's destined for one of the router's interfaces
+		System.out.println("147");
 		for (Map.Entry<String, Iface> iface : this.interfaces.entrySet()) {
 			if (iface.getValue().getIpAddress() == ipv4Packet.getDestinationAddress())
 				return;
 		}
-
+		System.out.println("152");
 		// Lookup the route entry in the routing table
 		RouteEntry routeEntry = this.routeTable.lookup(ipv4Packet.getDestinationAddress());
-	
+		
 		// Drop the packet if no matching entry found in the routing table
 		if (routeEntry == null) {
 			return;
 		}
-	
+		System.out.println("160");
 		// Determine the next-hop IP address
 		int nextHopIp = routeEntry.getGatewayAddress();
 		if (nextHopIp == 0) {
@@ -168,7 +169,7 @@ public class Router extends Device {
 		if (nextHopMac == null) {
 			return;
 		}
-	
+		System.out.println("172");
 		// Update the Ethernet header with the MAC addresses
 		etherPacket.setDestinationMACAddress(nextHopMac.toBytes());
 		etherPacket.setSourceMACAddress(routeEntry.getInterface().getMacAddress().toBytes());
@@ -202,9 +203,11 @@ public class Router extends Device {
 		if (ripPacket.getCommand() == RIPv2.COMMAND_REQUEST) {
 			Iface outIface = getOutgoingIface(etherPacket);
 			// send the response on the same interface as the request
+			System.out.println("206");
 			sendRIPPacket(UNICAST_RES, etherPacket, ipv4Packet.getSourceAddress(), outIface);
 		} else if (ripPacket.getCommand() == RIPv2.COMMAND_RESPONSE) {
 			// Process each entry in the RIP packet
+			System.out.println("210");
 			for (RIPv2Entry ripEntry : ripPacket.getEntries()) {
 				int addr = ripEntry.getAddress();
 				RIPv2Entry thisEntry = this.ripTable.lookup(addr);
@@ -215,6 +218,7 @@ public class Router extends Device {
 					ripTable.addEntry(newEntry);
 				} else {
 					// Update existing entry if a shorter path is found
+					System.out.println("221");
 					if ((ripEntry.getMetric() + 1) < thisEntry.getMetric()) {
 						thisEntry.setNextHopAddress(addr);
 						thisEntry.updateTime();
@@ -225,6 +229,7 @@ public class Router extends Device {
 				}
 			}
 		}
+		System.out.println("232");
 	}
 	
 	// Helper function to handle non-RIP packets

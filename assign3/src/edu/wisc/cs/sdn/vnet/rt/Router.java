@@ -141,7 +141,6 @@ public class Router extends Device {
 		} else {
 			handleDynamicRouting(etherPacket, ipv4Packet);
 		}
-	
 		// Print a message indicating that the router sent a packet
 		System.out.println("*** -> Router Sent packet: " +
 				etherPacket.toString().replace("\n", "\n\t"));
@@ -332,6 +331,14 @@ public class Router extends Device {
 			
 		}
 		
+	}
+
+	public void checkEntryTimes(){
+		for (RIPv2Entry entry : this.ripTable.getEntries()){
+			if (System.currentTimeMillis() - entry.getTime() >= 30000){
+				this.ripTable.getEntries().remove(entry);
+			}
+		}
 	}
 
 }

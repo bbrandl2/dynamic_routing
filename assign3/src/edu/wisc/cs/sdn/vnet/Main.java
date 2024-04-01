@@ -106,13 +106,13 @@ public class Main
 			{ ((Router)dev).loadArpCache(arpCacheFile); }
 
 			// Unsolicited response
-			task10 = new MyTask((Router)dev);
+			task10 = new MyTask((Router)dev, 10);
 			timer.schedule(task10, 0, 10000);
 			// Create a "send RIP response" method to call every 10 seconds
 
 			// Update check
-			task30 = new MyTask((Router)dev);
-			timer.schedule(task30, 0, 30000);
+			task30 = new MyTask((Router)dev, 30);
+			timer.schedule(task30, 0, 1000);
 		}
 
 		

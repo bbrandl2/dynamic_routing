@@ -262,6 +262,15 @@ public class Router extends Device {
 		this.sendPacket(etherPacket, outIface);
 	}
 
+	private Iface getOutgoingIface(Ethernet etherPacket){
+		for (Map.Entry<String, Iface> iface : this.interfaces.entrySet()) {
+			if (iface.getValue().getMacAddress() == etherPacket.getDestinationMAC()){
+				return (Iface) iface;
+			}
+		}
+		return null;
+	}
+
 	private boolean verifyChecksum(IPv4 ipv4Packet) {
 		int headerLength = ipv4Packet.getHeaderLength();
 		byte[] headerData = ipv4Packet.serialize();

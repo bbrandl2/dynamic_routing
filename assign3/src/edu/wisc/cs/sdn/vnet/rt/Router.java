@@ -129,18 +129,13 @@ public class Router extends Device {
 			return;
 		}
 	
-		// Drop the packet if it's destined for one of the router's interfaces
-		for (Map.Entry<String, Iface> iface : this.interfaces.entrySet()) {
-			if (iface.getValue().getIpAddress() == ipv4Packet.getDestinationAddress())
-				return;
-		}
-	
 		// Handle the packet based on the routing type (static or dynamic)
 		if (this.isStatic) {
 			handleStaticRouting(etherPacket, ipv4Packet);
 		} else {
 			handleDynamicRouting(etherPacket, ipv4Packet);
 		}
+		
 		// Print a message indicating that the router sent a packet
 		System.out.println("*** -> Router Sent packet: " +
 				etherPacket.toString().replace("\n", "\n\t"));
@@ -148,6 +143,12 @@ public class Router extends Device {
 	
 	// Helper function to handle static routing for IPv4 packets
 	private void handleStaticRouting(Ethernet etherPacket, IPv4 ipv4Packet) {
+		// Drop the packet if it's destined for one of the router's interfaces
+		for (Map.Entry<String, Iface> iface : this.interfaces.entrySet()) {
+			if (iface.getValue().getIpAddress() == ipv4Packet.getDestinationAddress())
+				return;
+		}
+
 		// Lookup the route entry in the routing table
 		RouteEntry routeEntry = this.routeTable.lookup(ipv4Packet.getDestinationAddress());
 	

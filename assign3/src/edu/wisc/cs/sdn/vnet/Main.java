@@ -94,12 +94,11 @@ public class Main
 		{
 			// Read static route table
 			if (routeTableFile != null){ 
-				((Router)dev).setStatic(true);
 				((Router)dev).loadRouteTable(routeTableFile); 
 			}
 			else { // Static route table not provided; use RIP
 				((Router)dev).setStatic(false);
-				((Router)dev).loadRouteTable(routeTableFile); // should be null
+				((Router)dev).loadRouteTable(routeTableFile); 
 			}
 			
 			// Read static ACP cache

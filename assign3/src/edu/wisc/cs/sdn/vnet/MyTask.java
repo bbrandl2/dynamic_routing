@@ -24,6 +24,5 @@ public class MyTask extends TimerTask {
         else{
             System.out.println("Error in run() function of MyTask.java");
         }
-        
     }
 }

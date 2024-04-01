@@ -135,7 +135,7 @@ public class Router extends Device {
 		} else {
 			handleDynamicRouting(etherPacket, ipv4Packet);
 		}
-		
+
 		// Print a message indicating that the router sent a packet
 		System.out.println("*** -> Router Sent packet: " +
 				etherPacket.toString().replace("\n", "\n\t"));
@@ -193,7 +193,7 @@ public class Router extends Device {
 	}
 	
 	// Helper function to handle RIP packets
-	private void handleRIPPacket(Ethernet etherPacket, IPv4 ipv4Packet) {
+	private void handleRIPPacket(IPv4 ipv4Packet) {
 		// Extract the RIP packet from the UDP payload
 		UDP udpPacket = (UDP) ipv4Packet.getPayload();
 		RIPv2 refTable = (RIPv2) udpPacket.getPayload();
@@ -213,7 +213,8 @@ public class Router extends Device {
 					thisEntry.setNextHopAddress(addr);
 					thisEntry.updateTime();
 				} else if ((thisEntry.getMetric() + 1) < ripEntry.getMetric()) {
-					sendRIPPacket(3, ipv4Packet.getSourceAddress(), etherPacket.getM);
+					// TODO
+					// Send a response back to other router indicating a shorter path
 				}
 			}
 		}
@@ -237,9 +238,18 @@ public class Router extends Device {
 		if (nextHopMac == null) {
 			return;
 		}
-	
-		// Get the outgoing interface based on the source IP address of the packet
-		Iface outIface = getOutgoingInterface(ipv4Packet.getSourceAddress());
+		
+		Iface outIface = null;
+		// Get the outgoing interface based on the next hop IP address of the packet
+		for (Iface iface : this.interfaces.values()) {
+			if ((iface.getSubnetMask() & iface.getIpAddress()) == (iface.getSubnetMask() & nextHopIp)) {
+				outIface = iface;
+			}
+		}
+		if (outIface == null) {
+			System.out.println("Packet dropped.\n");
+			return;
+		}
 	
 		// Update the Ethernet header with the MAC addresses
 		etherPacket.setDestinationMACAddress(nextHopMac.toBytes());
@@ -251,15 +261,6 @@ public class Router extends Device {
 		// Send the packet out the correct interface
 		this.sendPacket(etherPacket, outIface);
 	}
-	
-	private Iface getOutgoingInterface(int ipAddress) {
-		for (Iface iface : this.interfaces.values()) {
-			if (iface.getIpAddress() == ipAddress) {
-				return iface;
-			}
-		}
-		return null;
-	}	
 
 	private boolean verifyChecksum(IPv4 ipv4Packet) {
 		int headerLength = ipv4Packet.getHeaderLength();
@@ -286,7 +287,7 @@ public class Router extends Device {
 		return computedChecksum == checksum;
 	}
 
-	public void sendRIPPacket(int directive, int addr, int macAddr){
+	public void sendRIPPacket(int directive){
 		if (directive == BROADCAST_REQ || directive == UNICAST_REQ) {
 			ripTable.setCommand((byte) 1);	// COMMAND_REQUEST
 		} else if (directive == BROADCAST_RES || directive == UNICAST_RES)	{

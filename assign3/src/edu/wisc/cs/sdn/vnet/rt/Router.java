@@ -102,39 +102,6 @@ public class Router extends Device {
         }
     }
 
-    // private void sendRIPPacket(RIPv2 ripPacket, Iface iface) {
-    //     // Construct Ethernet packet with the RIP packet as payload
-    //     Ethernet ethPacket = new Ethernet();
-    //     ethPacket.setEtherType(Ethernet.TYPE_IPv4);
-    //     ethPacket.setSourceMACAddress(iface.getMacAddress().toBytes());
-    //     ethPacket.setDestinationMACAddress(BROADCAST_MAC);
-
-    //     // Construct IPv4 packet
-    //     IPv4 ipv4Packet = new IPv4();
-    //     ipv4Packet.setProtocol(IPv4.PROTOCOL_UDP);
-    //     ipv4Packet.setTtl((byte) 1); // Set TTL to 1 to limit scope
-    //     ipv4Packet.setSourceAddress(iface.getIpAddress());
-    //     ipv4Packet.setDestinationAddress(RIP_MULTICAST_IP_INT);
-
-    //     // Construct UDP packet
-    //     UDP udpPacket = new UDP();
-    //     udpPacket.setSourcePort(UDP_RIP_PORT);
-    //     udpPacket.setDestinationPort(UDP_RIP_PORT);
-        
-    //     // Set the RIP packet as payload for the UDP packet
-    //     udpPacket.setPayload(ripPacket);
-
-    //     // Set UDP packet as payload for the IPv4 packet
-    //     ipv4Packet.setPayload(udpPacket);
-
-    //     // Set IPv4 packet as payload for the Ethernet packet
-    //     ethPacket.setPayload(ipv4Packet);
-
-    //     // Send the Ethernet packet out of the interface
-    //     sendPacket(ethPacket, iface);
-    // }
-
-
     private void sendRIPRequest(RIPv2 ripPayload, Iface inIface) {
         System.out.println("SEND REQUEST");
         // Create a RIPv2 response packet
@@ -252,13 +219,17 @@ public class Router extends Device {
 
         // Check if the packet is UDP and RIP
         if (ipv4Packet.getProtocol() == IPv4.PROTOCOL_UDP) {
+            System.out.println("222--PACKET IS UDP");
             UDP udpPacket = (UDP) ipv4Packet.getPayload();
             if (udpPacket.getDestinationPort() == UDP_RIP_PORT) {
+                System.out.println("225--PACKET IS DESTINED FOR PORT 520");
                 RIPv2 ripPayload = (RIPv2) udpPacket.getPayload();
                 if (ripPayload.getCommand() == RIPv2.COMMAND_REQUEST) {
+                    System.out.println("228--PACKET IS REQUEST");
                     // Handle RIP request
                     sendRIPResponse(ripPayload, inIface);
                 } else if (ripPayload.getCommand() == RIPv2.COMMAND_RESPONSE) {
+                    System.out.println("232--PACKET IS RESPONSE");
                     // Handle RIP response
                     handleRIPPacket(ripPayload, inIface);
                 }
@@ -267,6 +238,7 @@ public class Router extends Device {
                 return;
             }
         }
+        System.out.println("241--HANDLE OF NORMAL PACKET");
 
         // Verify the checksum of the IPv4 packet
         if (!verifyChecksum(ipv4Packet)) {

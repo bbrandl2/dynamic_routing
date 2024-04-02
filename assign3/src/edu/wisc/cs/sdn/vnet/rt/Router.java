@@ -227,11 +227,12 @@ public class Router extends Device {
 					if ((ripEntry.getMetric() + 1) < thisEntry.getMetric()) {
 						thisEntry.setNextHopAddress(addr);
 						thisEntry.updateTime();
-					} else if ((thisEntry.getMetric() + 1) < ripEntry.getMetric()) {
-						Iface out = getOutgoingIface(etherPacket);
-						System.out.println("228: "+ out.toString());
-						this.sendRIPPacket(UNICAST_RES, etherPacket, ipv4Packet.getSourceAddress(), out);
-					}
+					} 
+					// else if ((thisEntry.getMetric() + 1) < ripEntry.getMetric()) {
+					// 	Iface out = getOutgoingIface(etherPacket);
+					// 	System.out.println("228: "+ out.toString());
+					// 	this.sendRIPPacket(UNICAST_RES, etherPacket, ipv4Packet.getSourceAddress(), out);
+					// }
 				}
 			}
 		}

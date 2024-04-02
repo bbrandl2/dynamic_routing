@@ -241,7 +241,7 @@ public class Router extends Device {
 		if (RIProuteEntry == null) {
 			return;
 		}
-	
+		System.out.println("224");
 		// Determine the next-hop IP address
 		int nextHopIp = RIProuteEntry.getNextHopAddress();
 	
@@ -250,7 +250,7 @@ public class Router extends Device {
 		if (nextHopMac == null) {
 			return;
 		}
-		
+		System.out.println("253");
 		Iface outIface = null;
 		// Get the outgoing interface based on the next hop IP address of the packet
 		for (Iface iface : this.interfaces.values()) {
@@ -262,7 +262,7 @@ public class Router extends Device {
 			System.out.println("Packet dropped.\n");
 			return;
 		}
-	
+		System.out.println("265");
 		// Update the Ethernet header with the MAC addresses
 		etherPacket.setDestinationMACAddress(nextHopMac.toBytes());
 		etherPacket.setSourceMACAddress(outIface.getMacAddress().toBytes());

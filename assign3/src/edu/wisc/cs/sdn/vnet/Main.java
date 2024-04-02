@@ -103,8 +103,8 @@ public class Main
 				((Router)dev).loadRouteTable(routeTableFile); 
 
 				// Unsolicited response
-				// task10 = new MyTask((Router)dev, 10);
-				// timer.schedule(task10, 0, 10000);
+				task10 = new MyTask((Router)dev, 10);
+				timer.schedule(task10, 0, 10000);
 				// // Create a "send RIP response" method to call every 10 seconds
 
 				// // Update check

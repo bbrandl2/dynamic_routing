@@ -225,6 +225,7 @@ public class Router extends Device {
 						thisEntry.updateTime();
 					} else if ((thisEntry.getMetric() + 1) < ripEntry.getMetric()) {
 						Iface out = getOutgoingIface(etherPacket);
+						System.out.println("228: "+ out.toString());
 						this.sendRIPPacket(UNICAST_RES, etherPacket, ipv4Packet.getSourceAddress(), out);
 					}
 				}
@@ -317,7 +318,7 @@ public class Router extends Device {
 		}
 
 		if (directive == BROADCAST_REQ || directive == BROADCAST_RES) {	// Send RIP response out of all interfaces, called every 10 seconds
-			if (etherPacket == null || outIface == null) System.out.println("NULL 314");
+			// if (etherPacket == null || outIface == null) System.out.println("NULL 314");
 			for (Map.Entry<String, Iface> iface : this.interfaces.entrySet()) {
 				// Create Ethernet packet
 				Ethernet etherpacket = new Ethernet();
@@ -353,7 +354,7 @@ public class Router extends Device {
 			Ethernet etherpacket = new Ethernet();
 			etherpacket.setDestinationMACAddress(etherPacket.getSourceMACAddress());
 			etherpacket.setEtherType(Ethernet.TYPE_IPv4);
-			etherpacket.setSourceMACAddress(outIface.getMacAddress().toString());
+			etherpacket.setSourceMACAddress(outIface.getMacAddress().toBytes());
 
 			// Create IPv4 packet, add as Ether payload
 			IPv4 ipPacket = new IPv4();

@@ -70,6 +70,7 @@ public class Router extends Device {
         } else {    
             for (Map.Entry<String, Iface> iface : this.interfaces.entrySet()) {
                 ripTable.addEntry(new RIPv2Entry(iface.getValue().getIpAddress(), iface.getValue().getSubnetMask(), 0, System.currentTimeMillis(), true));
+				System.out.println("NEW ENTRY ADDED: PERM");
             }
 
 			// Send broadcast request
@@ -209,6 +210,7 @@ public class Router extends Device {
 				// Add a new entry to the RIP table if not already present
 				RIPv2Entry newEntry = new RIPv2Entry(addr, ripEntry.getSubnetMask(), ripEntry.getMetric() + 1, System.currentTimeMillis(), false);
 				ripTable.addEntry(newEntry);
+				System.out.println("NEW ENTRY ADDED: " + newEntry.toString());
 			} else {
 				// Update existing entry if a shorter path is found
 				if ((ripEntry.getMetric() + 1) < thisEntry.getMetric()) {

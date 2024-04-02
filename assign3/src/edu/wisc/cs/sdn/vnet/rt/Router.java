@@ -100,7 +100,7 @@ public class Router extends Device {
         for (Map.Entry<String, Iface> entry : this.interfaces.entrySet()) {
             Iface iface = entry.getValue();
             // sendRIPPacket(ripPacket, iface);
-            sendRIPResponse(ripPacket, iface);
+            sendRIPResponse(ripPacket, iface, true);
         }
     }
 
@@ -237,7 +237,7 @@ public class Router extends Device {
                 RIPv2 ripPayload = (RIPv2) udpPacket.getPayload();
                 if (ripPayload.getCommand() == RIPv2.COMMAND_REQUEST) {
                     // Handle RIP request
-                    sendRIPResponse(ripPayload, inIface);
+                    sendRIPResponse(ripPayload, inIface, false);
                 } else if (ripPayload.getCommand() == RIPv2.COMMAND_RESPONSE) {
                     // Handle RIP response
                     handleRIPPacket(ripPayload, inIface);

@@ -60,16 +60,16 @@ public class Router extends Device {
         }
 
         // Start sending unsolicited RIP responses every 10 seconds
-        new Thread(() -> {
-            while (ripEnabled) {
-                sendUnsolicitedRIPResponse();
-                try {
-                    Thread.sleep(10000); // 10 seconds interval
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-        }).start();
+        // new Thread(() -> {
+        //     while (ripEnabled) {
+        //         sendUnsolicitedRIPResponse();
+        //         try {
+        //             Thread.sleep(10000); // 10 seconds interval
+        //         } catch (InterruptedException e) {
+        //             e.printStackTrace();
+        //         }
+        //     }
+        // }).start();
     }
 
     private void handleSendRIPRequest() {

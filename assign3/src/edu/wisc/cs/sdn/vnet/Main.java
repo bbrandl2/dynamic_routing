@@ -94,6 +94,7 @@ public class Main
 		{
 			// Read static route table
 			if (routeTableFile != null){ 
+				System.out.println("STATIC\n");
 				((Router)dev).setStatic(true);
 				((Router)dev).loadRouteTable(routeTableFile); 
 			}

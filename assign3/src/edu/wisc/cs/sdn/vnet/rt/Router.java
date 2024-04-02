@@ -149,7 +149,7 @@ public class Router extends Device {
         sendPacket(ethPacket, inIface);
     }
 
-    private void sendRIPResponse(RIPv2 ripPayload, Iface inIface) {
+    private void sendRIPResponse(RIPv2 ripPayload, Iface inIface, boolean broadcast) {
 		// System.out.println("SEND RESPONSE");
 
         // Create a RIPv2 response packet
@@ -170,16 +170,25 @@ public class Router extends Device {
         // Create Ethernet packet
         Ethernet ethPacket = new Ethernet();
         ethPacket.setEtherType(Ethernet.TYPE_IPv4);
+
         ethPacket.setSourceMACAddress(inIface.getMacAddress().toBytes());
-        ethPacket.setDestinationMACAddress(inIface.getMacAddress().toBytes());
+        if(broadcast) {
+            ethPacket.setDestinationMACAddress(BROADCAST_MAC);
+        } else {
+            ethPacket.setDestinationMACAddress(inIface.getMacAddress().toBytes());
+        }
     
         // Create IPv4 packet
         IPv4 ipv4Packet = new IPv4();
         ipv4Packet.setProtocol(IPv4.PROTOCOL_UDP);
         ipv4Packet.setTtl((byte) 1); // Set TTL to 1 to limit scope
+
         ipv4Packet.setSourceAddress(inIface.getIpAddress());
-        ipv4Packet.setDestinationAddress(ipv4Packet.getSourceAddress()); // Source and destination IP are the same
-    
+        if(broadcast) {
+            ipv4Packet.setDestinationAddress(RIP_MULTICAST_IP_INT);
+        } else {
+            ipv4Packet.setDestinationAddress(ipv4Packet.getSourceAddress()); // Source and destination IP are the same
+        }
         // Create UDP packet
         UDP udpPacket = new UDP();
         udpPacket.setSourcePort(UDP_RIP_PORT);

@@ -43,6 +43,7 @@ public class Router extends Device {
     }
 
     public void startRIP() {
+		System.out.println("START RIP");
         // Send RIP request out all interfaces
         sendRIPRequest();
 
@@ -71,6 +72,7 @@ public class Router extends Device {
     }
 
     private void sendRIPRequest() {
+		System.out.println("SEND REQUEST");
         // Create a RIP request packet
         RIPv2 ripPacket = new RIPv2();
         ripPacket.setCommand(RIPv2.COMMAND_REQUEST);
@@ -84,6 +86,7 @@ public class Router extends Device {
     }
 
     private void sendUnsolicitedRIPResponse() {
+		System.out.println("SEND UNSOLICITED RESPONSE");
         // Create a RIPv2 response packet
         RIPv2 ripPacket = new RIPv2();
         ripPacket.setCommand(RIPv2.COMMAND_RESPONSE);
@@ -97,6 +100,7 @@ public class Router extends Device {
     }
 
     private void sendRIPPacket(RIPv2 ripPacket, Iface iface) {
+		System.out.println("SEND PACKET");
         // Construct Ethernet packet with the RIP packet as payload
         Ethernet ethPacket = new Ethernet();
         ethPacket.setEtherType(Ethernet.TYPE_IPv4);
@@ -129,6 +133,7 @@ public class Router extends Device {
     }
 
     private void sendRIPResponse(RIPv2 ripPayload, Iface inIface) {
+		System.out.println("SEND RESPONSE");
         // Create a RIPv2 response packet
         RIPv2 ripResponse = new RIPv2();
         ripResponse.setCommand(RIPv2.COMMAND_RESPONSE);

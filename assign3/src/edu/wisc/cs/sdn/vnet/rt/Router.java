@@ -44,7 +44,8 @@ public class Router extends Device {
 
     public void startRIP() {
         // Send RIP request out all interfaces
-        sendRIPRequest();
+        // sendRIPRequest();
+        handleSendRIPRequest();
 
         // Add entries to the RIP table for directly reachable subnets
         for (Map.Entry<String, Iface> entry : this.interfaces.entrySet()) {
@@ -70,7 +71,7 @@ public class Router extends Device {
         }).start();
     }
 
-    private void sendRIPRequest() {
+    private void handleSendRIPRequest() {
         // Create a RIP request packet
         RIPv2 ripPacket = new RIPv2();
         ripPacket.setCommand(RIPv2.COMMAND_REQUEST);
@@ -78,7 +79,8 @@ public class Router extends Device {
         // Send the RIP request packet out of each interface
         for (Map.Entry<String, Iface> entry : this.interfaces.entrySet()) {
             Iface iface = entry.getValue();
-            sendRIPPacket(ripPacket, iface);
+            // sendRIPPacket(ripPacket, iface);
+            sendRIPRequest(ripPacket, iface);
         }
     }
 
@@ -91,45 +93,90 @@ public class Router extends Device {
         // Send the RIP response packet out of each interface
         for (Map.Entry<String, Iface> entry : this.interfaces.entrySet()) {
             Iface iface = entry.getValue();
-            sendRIPPacket(ripPacket, iface);
+            // sendRIPPacket(ripPacket, iface);
+            sendRIPRequest(ripPacket, iface);
         }
     }
 
-    private void sendRIPPacket(RIPv2 ripPacket, Iface iface) {
-        // Construct Ethernet packet with the RIP packet as payload
+    // private void sendRIPPacket(RIPv2 ripPacket, Iface iface) {
+    //     // Construct Ethernet packet with the RIP packet as payload
+    //     Ethernet ethPacket = new Ethernet();
+    //     ethPacket.setEtherType(Ethernet.TYPE_IPv4);
+    //     ethPacket.setSourceMACAddress(iface.getMacAddress().toBytes());
+    //     ethPacket.setDestinationMACAddress(BROADCAST_MAC);
+
+    //     // Construct IPv4 packet
+    //     IPv4 ipv4Packet = new IPv4();
+    //     ipv4Packet.setProtocol(IPv4.PROTOCOL_UDP);
+    //     ipv4Packet.setTtl((byte) 1); // Set TTL to 1 to limit scope
+    //     ipv4Packet.setSourceAddress(iface.getIpAddress());
+    //     ipv4Packet.setDestinationAddress(RIP_MULTICAST_IP_INT);
+
+    //     // Construct UDP packet
+    //     UDP udpPacket = new UDP();
+    //     udpPacket.setSourcePort(UDP_RIP_PORT);
+    //     udpPacket.setDestinationPort(UDP_RIP_PORT);
+        
+    //     // Set the RIP packet as payload for the UDP packet
+    //     udpPacket.setPayload(ripPacket);
+
+    //     // Set UDP packet as payload for the IPv4 packet
+    //     ipv4Packet.setPayload(udpPacket);
+
+    //     // Set IPv4 packet as payload for the Ethernet packet
+    //     ethPacket.setPayload(ipv4Packet);
+
+    //     // Send the Ethernet packet out of the interface
+    //     sendPacket(ethPacket, iface);
+    // }
+
+
+    private void sendRIPRequest(RIPv2 ripPayload, Iface inIface) {
+        // Create a RIPv2 response packet
+        RIPv2 ripResponse = ripPayload; // new RIPv2();
+        ripResponse.setCommand(RIPv2.COMMAND_REQUEST);
+    
+        // Add entries to the request packet for directly reachable subnets
+        for (Map.Entry<String, Iface> entry : this.interfaces.entrySet()) {
+            Iface iface = entry.getValue();
+            int address = iface.getIpAddress();
+            int subnetMask = iface.getSubnetMask();
+    
+            // Add entry to RIP response packet
+            RIPv2Entry ripEntry = new RIPv2Entry(address, subnetMask, 0, System.currentTimeMillis(), true);
+            ripResponse.addEntry(ripEntry);
+        }
+    
+        // Create Ethernet packet
         Ethernet ethPacket = new Ethernet();
         ethPacket.setEtherType(Ethernet.TYPE_IPv4);
-        ethPacket.setSourceMACAddress(iface.getMacAddress().toBytes());
-        ethPacket.setDestinationMACAddress(BROADCAST_MAC);
-
-        // Construct IPv4 packet
+        ethPacket.setSourceMACAddress(inIface.getMacAddress().toBytes());
+        ethPacket.setDestinationMACAddress(inIface.getMacAddress().toBytes());
+    
+        // Create IPv4 packet
         IPv4 ipv4Packet = new IPv4();
         ipv4Packet.setProtocol(IPv4.PROTOCOL_UDP);
         ipv4Packet.setTtl((byte) 1); // Set TTL to 1 to limit scope
-        ipv4Packet.setSourceAddress(iface.getIpAddress());
-        ipv4Packet.setDestinationAddress(RIP_MULTICAST_IP_INT);
-
-        // Construct UDP packet
+        ipv4Packet.setSourceAddress(inIface.getIpAddress());
+        ipv4Packet.setDestinationAddress(ipv4Packet.getSourceAddress()); // Source and destination IP are the same
+    
+        // Create UDP packet
         UDP udpPacket = new UDP();
         udpPacket.setSourcePort(UDP_RIP_PORT);
         udpPacket.setDestinationPort(UDP_RIP_PORT);
-        
-        // Set the RIP packet as payload for the UDP packet
-        udpPacket.setPayload(ripPacket);
-
-        // Set UDP packet as payload for the IPv4 packet
+        udpPacket.setPayload(ripResponse);
+    
+        // Set packets as payload for each other
         ipv4Packet.setPayload(udpPacket);
-
-        // Set IPv4 packet as payload for the Ethernet packet
         ethPacket.setPayload(ipv4Packet);
-
-        // Send the Ethernet packet out of the interface
-        sendPacket(ethPacket, iface);
+    
+        // Send the Ethernet packet out of the interface that received the request
+        sendPacket(ethPacket, inIface);
     }
 
     private void sendRIPResponse(RIPv2 ripPayload, Iface inIface) {
         // Create a RIPv2 response packet
-        RIPv2 ripResponse = new RIPv2();
+        RIPv2 ripResponse = ripPayload; // new RIPv2();
         ripResponse.setCommand(RIPv2.COMMAND_RESPONSE);
     
         // Add entries to the response packet for directly reachable subnets

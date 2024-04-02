@@ -74,6 +74,7 @@ public class Router extends Device {
         // Create a RIP request packet
         RIPv2 ripPacket = new RIPv2();
         ripPacket.setCommand(RIPv2.COMMAND_REQUEST);
+		ripPacket.setEntries(ripEntries);
 
         // Send the RIP request packet out of each interface
         for (Map.Entry<String, Iface> entry : this.interfaces.entrySet()) {

@@ -57,6 +57,8 @@ public class Router extends Device {
             // Add entry to RIP table
             RIPv2Entry ripEntry = new RIPv2Entry(address, subnetMask, 0, System.currentTimeMillis(), true);
             this.ripEntries.add(ripEntry);
+
+            updateRouteTable(iface);
         }
 
         // Start sending unsolicited RIP responses every 10 seconds
@@ -323,6 +325,7 @@ public class Router extends Device {
                 existingEntry.setMetric(receivedEntry.getMetric() + 1);
             }
         }
+        updateRouteTable(inIface);
     }
 
     private RIPv2Entry findRIPEntry(RIPv2Entry entry) {
@@ -332,6 +335,12 @@ public class Router extends Device {
             }
         }
         return null;
+    }
+
+    private void updateRouteTable(Iface inIface) {
+        for (RIPv2Entry entry : ripEntries) {
+            routeTable.insert(entry.getAddress(), 0, entry.getSubnetMask(), inIface);
+        }
     }
 
     /**

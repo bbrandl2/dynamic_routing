@@ -37,9 +37,9 @@ public class Router extends Device {
         this.useStaticRouteTable = (routeTableFile != null);
         this.ripEnabled = !useStaticRouteTable; // Enable RIP if no static route table is provided
         this.ripEntries = new LinkedList<>();
-        if (useStaticRouteTable) {
-            loadRouteTable(routeTableFile);
-        }
+        // if (useStaticRouteTable) {
+        //     loadRouteTable(routeTableFile);
+        // }
     }
 
     public void startRIP() {

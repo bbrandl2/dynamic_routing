@@ -88,7 +88,10 @@ public class Main
             Router router = (Router) dev;
             router.startRIP();
         }
-        
+		
+        if (routeTableFile != null)
+			{ ((Router)dev).loadRouteTable(routeTableFile); }
+
         // Read static ARP cache if provided
         if (dev instanceof Router && arpCacheFile != null) {
             Router router = (Router) dev;

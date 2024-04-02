@@ -73,7 +73,8 @@ public class Router extends Device {
     }
 
     private void handleSendRIPRequest() {
-        System.out.println("HANDLE SEND REQUEST");
+        // System.out.println("HANDLE SEND REQUEST");
+
         // Create a RIP request packet
         RIPv2 ripPacket = new RIPv2();
         ripPacket.setCommand(RIPv2.COMMAND_REQUEST);
@@ -88,7 +89,8 @@ public class Router extends Device {
     }
 
     private void sendUnsolicitedRIPResponse() {
-		System.out.println("HANDLE SEND UNSOLICITED RESPONSE");
+		// System.out.println("HANDLE SEND UNSOLICITED RESPONSE");
+
         // Create a RIPv2 response packet
         RIPv2 ripPacket = new RIPv2();
         ripPacket.setCommand(RIPv2.COMMAND_RESPONSE);
@@ -103,7 +105,8 @@ public class Router extends Device {
     }
 
     private void sendRIPRequest(RIPv2 ripPayload, Iface inIface) {
-        System.out.println("SEND REQUEST");
+        // System.out.println("SEND REQUEST");
+
         // Create a RIPv2 response packet
         RIPv2 ripResponse = ripPayload; // new RIPv2();
         ripResponse.setCommand(RIPv2.COMMAND_REQUEST);
@@ -147,7 +150,8 @@ public class Router extends Device {
     }
 
     private void sendRIPResponse(RIPv2 ripPayload, Iface inIface) {
-		System.out.println("SEND RESPONSE");
+		// System.out.println("SEND RESPONSE");
+
         // Create a RIPv2 response packet
         RIPv2 ripResponse = ripPayload; // new RIPv2();
         ripResponse.setCommand(RIPv2.COMMAND_RESPONSE);
@@ -242,6 +246,7 @@ public class Router extends Device {
 
         // Verify the checksum of the IPv4 packet
         if (!verifyChecksum(ipv4Packet)) {
+            System.out.println("249--CHECKSUM");
             return; // Drop the packet if the checksum is incorrect
         }
 
@@ -250,6 +255,7 @@ public class Router extends Device {
 
         // Drop the packet if the TTL is 0
         if (ipv4Packet.getTtl() == 0) {
+            System.out.println("258--TTL");
             return;
         }
 
@@ -257,6 +263,7 @@ public class Router extends Device {
         for (Map.Entry<String, Iface> iface : this.interfaces.entrySet()) {
             // Drop packet if it matches a router interface IP
             if (iface.getValue().getIpAddress() == ipv4Packet.getDestinationAddress())
+                System.out.println("266--DESTINED FOR ROUTER");
                 return;
         }
 
@@ -265,6 +272,7 @@ public class Router extends Device {
 
         // Drop the packet if no matching entry found
         if (routeEntry == null) {
+            System.out.println("275--NOT IN ROUTE TABLE");
             return;
         }
 
@@ -277,6 +285,7 @@ public class Router extends Device {
         // Lookup MAC address corresponding to next-hop IP address
         MACAddress nextHopMac = this.arpCache.lookup(nextHopIp).getMac();
         if (nextHopMac == null) {
+            System.out.println("288--NOT IN ARP CACHE");
             return; // Drop the packet if MAC address not found
         }
 

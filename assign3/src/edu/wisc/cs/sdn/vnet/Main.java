@@ -4,133 +4,111 @@ import edu.wisc.cs.sdn.vnet.rt.Router;
 import edu.wisc.cs.sdn.vnet.sw.Switch;
 import edu.wisc.cs.sdn.vnet.vns.Command;
 import edu.wisc.cs.sdn.vnet.vns.VNSComm;
-import edu.wisc.cs.sdn.vnet.MyTask;
-
-import java.util.Timer;
-import java.util.TimerTask;
 
 public class Main 
 {
-	private static final short DEFAULT_PORT = 8888;
-	private static final String DEFAULT_SERVER = "localhost";
-	
-	public static void main(String[] args)
-	{
-		String host = null;
-		String server = DEFAULT_SERVER;
-		String routeTableFile = null;
-		String arpCacheFile = null;
-		String logfile = null;
-		short port = DEFAULT_PORT;
-		VNSComm vnsComm = null;
-		Device dev = null;
-		Timer timer = new Timer();
-		TimerTask task10;
-		TimerTask task30;
-		
-		// Parse arguments
-		for(int i = 0; i < args.length; i++)
-		{
-			String arg = args[i];
-			if (arg.equals("-h"))
-			{
-				usage();
-				return;
-			}
-			else if(arg.equals("-p"))
-			{ port = Short.parseShort(args[++i]); }
-			else if (arg.equals("-v"))
-			{ host = args[++i]; }
-			else if (arg.equals("-s"))
-			{ server = args[++i]; }
-			else if (arg.equals("-l"))
-			{ logfile = args[++i]; }
-			else if (arg.equals("-r"))
-			{ routeTableFile = args[++i]; }
-			else if (arg.equals("-a"))
-			{ arpCacheFile = args[++i]; }
-		}
-		
-		if (null == host)
-		{
-			usage();
-			return;
-		}
-		
-		// Open PCAP dump file for logging packets sent/received by the router
-		DumpFile dump = null;
-		if (logfile != null)
-		{
-			dump = DumpFile.open(logfile);
-			if (null == dump)
-			{
-				System.err.println("Error opening up dump file "+logfile);
-				return;
-			}
-		}
-		
-		if (host.startsWith("s"))
-		{ dev = new Switch(host, dump); }
-		else if (host.startsWith("r"))
-		{
-			// Create router instance
-			dev = new Router(host, dump);
-		}
-		else 
-		{
-			System.err.println("Device name must start with 's' or 'r'");
-			return;
-		}
-		
-		// Connect to Virtual Network Simulator server and negotiate session
-		System.out.println(String.format("Connecting to server %s:%d", 
-				server, port));
-		vnsComm = new VNSComm(dev);
-		if (!vnsComm.connectToServer(port, server))
-		{ System.exit(1); }
-		vnsComm.readFromServerExpect(Command.VNS_HW_INFO);	
-		
-		if (dev instanceof Router) 
-		{
-			// Read static route table
-			if (routeTableFile != null){ 
-				((Router)dev).loadRouteTable(routeTableFile); 
-			}
-			else { // Static route table not provided; use RIP
-				((Router)dev).setStatic(false);
-				((Router)dev).loadRouteTable(routeTableFile); 
-			}
-			
-			// Read static ACP cache
-			if (arpCacheFile != null)
-			{ ((Router)dev).loadArpCache(arpCacheFile); }
+    private static final short DEFAULT_PORT = 8888;
+    private static final String DEFAULT_SERVER = "localhost";
+    
+    public static void main(String[] args)
+    {
+        String host = null;
+        String server = DEFAULT_SERVER;
+        String routeTableFile = null;
+        String arpCacheFile = null;
+        String logfile = null;
+        short port = DEFAULT_PORT;
+        VNSComm vnsComm = null;
+        Device dev = null;
+        
+        // Parse arguments
+        for(int i = 0; i < args.length; i++)
+        {
+            String arg = args[i];
+            if (arg.equals("-h"))
+            {
+                usage();
+                return;
+            }
+            else if(arg.equals("-p"))
+            { port = Short.parseShort(args[++i]); }
+            else if (arg.equals("-v"))
+            { host = args[++i]; }
+            else if (arg.equals("-s"))
+            { server = args[++i]; }
+            else if (arg.equals("-l"))
+            { logfile = args[++i]; }
+            else if (arg.equals("-r"))
+            { routeTableFile = args[++i]; }
+            else if (arg.equals("-a"))
+            { arpCacheFile = args[++i]; }
+        }
+        
+        if (null == host)
+        {
+            usage();
+            return;
+        }
+        
+        // Open PCAP dump file for logging packets sent/received by the router
+        DumpFile dump = null;
+        if (logfile != null)
+        {
+            dump = DumpFile.open(logfile);
+            if (null == dump)
+            {
+                System.err.println("Error opening up dump file "+logfile);
+                return;
+            }
+        }
+        
+        if (host.startsWith("s"))
+        { dev = new Switch(host, dump); }
+        else if (host.startsWith("r"))
+        {
+            // Create router instance
+            dev = new Router(host, dump, routeTableFile); // Pass routeTableFile to Router constructor
+        }
+        else 
+        {
+            System.err.println("Device name must start with 's' or 'r'");
+            return;
+        }
+        
+        // Connect to Virtual Network Simulator server and negotiate session
+        System.out.println(String.format("Connecting to server %s:%d", 
+                server, port));
+        vnsComm = new VNSComm(dev);
+        if (!vnsComm.connectToServer(port, server))
+        { System.exit(1); }
+        vnsComm.readFromServerExpect(Command.VNS_HW_INFO);    
+        
+        // Start RIP protocol if Router instance and no static route table provided
+        if (dev instanceof Router && routeTableFile == null) {
+            Router router = (Router) dev;
+            router.startRIP();
+        }
+        
+        // Read static ARP cache if provided
+        if (dev instanceof Router && arpCacheFile != null) {
+            Router router = (Router) dev;
+            router.loadArpCache(arpCacheFile);
+        }
 
-			// Unsolicited response
-			task10 = new MyTask((Router)dev, 10);
-			timer.schedule(task10, 0, 10000);
-			// Create a "send RIP response" method to call every 10 seconds
-
-			// Update check
-			task30 = new MyTask((Router)dev, 30);
-			timer.schedule(task30, 0, 1000);
-		}
-
-		
-
-		// Read messages from the server until the server closes the connection
-		System.out.println("<-- Ready to process packets -->");
-		while (vnsComm.readFromServer());
-		
-		// Shutdown the router
-		dev.destroy();
-	}
-	
-	static void usage()
-	{
-		System.out.println("Virtual Network Client");
-		System.out.println("VNet -v host [-s server] [-p port] [-h]");
-		System.out.println("     [-r routing_table] [-a arp_cache] [-l log_file]");
-		System.out.println(String.format("  defaults server=%s port=%d", 
-				DEFAULT_SERVER, DEFAULT_PORT));
-	}
+        // Read messages from the server until the server closes the connection
+        System.out.println("<-- Ready to process packets -->");
+        while (vnsComm.readFromServer());
+        
+        // Shutdown the router
+        dev.destroy();
+    }
+    
+    static void usage()
+    {
+        System.out.println("Virtual Network Client");
+        System.out.println("VNet -v host [-s server] [-p port] [-h]");
+        System.out.println("     [-r routing_table] [-a arp_cache] [-l log_file]");
+        System.out.println(String.format("  defaults server=%s port=%d", 
+                DEFAULT_SERVER, DEFAULT_PORT));
+    }
 }

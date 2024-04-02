@@ -278,8 +278,9 @@ public class Router extends Device {
 
 	private Iface getOutgoingIface(Ethernet etherPacket){
 		for (Map.Entry<String, Iface> iface : this.interfaces.entrySet()) {
+			System.out.println(iface.getValue().getMacAddress().toString() + " | " + etherPacket.getDestinationMAC().toString());
 			if (iface.getValue().getMacAddress().toString().equals(etherPacket.getDestinationMAC().toString())){
-				System.out.println(iface.getValue().getMacAddress().toString() + " | " + etherPacket.getDestinationMAC().toString());
+				
 				return (Iface) iface;
 			}
 		}

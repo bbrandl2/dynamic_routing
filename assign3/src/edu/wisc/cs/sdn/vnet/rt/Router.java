@@ -107,7 +107,7 @@ public class Router extends Device {
 		// Print a message indicating that the router received a packet
 		System.out.println("*** -> Router Received packet: " +
 				etherPacket.toString().replace("\n", "\n\t"));
-	
+		System.out.println("110");
 		// Check if the packet is not IPv4, drop it if not
 		if (etherPacket.getEtherType() != Ethernet.TYPE_IPv4) {
 			return;

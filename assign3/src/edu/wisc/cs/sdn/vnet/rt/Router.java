@@ -114,13 +114,11 @@ public class Router extends Device {
 		// Print a message indicating that the router received a packet
 		System.out.println("*** -> Router Received packet: " +
 				etherPacket.toString().replace("\n", "\n\t"));
-		System.out.println("110");
 		// Check if the packet is not IPv4, drop it if not
 		System.out.println(etherPacket.getEtherType());
 		if (etherPacket.getEtherType() != Ethernet.TYPE_IPv4) {
 			return;
 		}
-		System.out.println("115");
 		// Extract the IPv4 packet from the Ethernet frame
 		IPv4 ipv4Packet = (IPv4) etherPacket.getPayload();
 	
@@ -128,7 +126,6 @@ public class Router extends Device {
 		if (!verifyChecksum(ipv4Packet)) {
 			return;
 		}
-		System.out.println("123");
 		// Decrement the TTL of the IPv4 packet
 		ipv4Packet.setTtl((byte) (ipv4Packet.getTtl() - 1));
 	
@@ -136,7 +133,6 @@ public class Router extends Device {
 		if (ipv4Packet.getTtl() == 0) {
 			return;
 		}
-		System.out.println("131");
 		// Handle the packet based on the routing type (static or dynamic)
 		if (this.isStatic) {
 			handleStaticRouting(etherPacket, ipv4Packet, inIface);
@@ -152,12 +148,10 @@ public class Router extends Device {
 	// Helper function to handle static routing for IPv4 packets
 	private void handleStaticRouting(Ethernet etherPacket, IPv4 ipv4Packet, Iface inIface) {
 		// Drop the packet if it's destined for one of the router's interfaces
-		System.out.println("147");
 		for (Map.Entry<String, Iface> iface : this.interfaces.entrySet()) {
 			if (iface.getValue().getIpAddress() == ipv4Packet.getDestinationAddress())
 				return;
 		}
-		System.out.println("152");
 		// Lookup the route entry in the routing table
 		RouteEntry routeEntry = this.routeTable.lookup(ipv4Packet.getDestinationAddress());
 		
@@ -165,7 +159,6 @@ public class Router extends Device {
 		if (routeEntry == null) {
 			return;
 		}
-		System.out.println("160");
 		// Determine the next-hop IP address
 		int nextHopIp = routeEntry.getGatewayAddress();
 		if (nextHopIp == 0) {
@@ -177,7 +170,6 @@ public class Router extends Device {
 		if (nextHopMac == null) {
 			return;
 		}
-		System.out.println("172");
 		// Update the Ethernet header with the MAC addresses
 		etherPacket.setDestinationMACAddress(nextHopMac.toBytes());
 		etherPacket.setSourceMACAddress(routeEntry.getInterface().getMacAddress().toBytes());
@@ -216,11 +208,9 @@ public class Router extends Device {
 			}
 
 			// send the response on the same interface as the request
-			System.out.println("206");
 			sendRIPPacket(UNICAST_RES, etherPacket, ipv4Packet.getSourceAddress(), outIface);
 		} else if (ripPacket.getCommand() == RIPv2.COMMAND_RESPONSE) {
 			// Process each entry in the RIP packet
-			System.out.println("210");
 			for (RIPv2Entry ripEntry : ripPacket.getEntries()) {
 				int addr = ripEntry.getAddress();
 				RIPv2Entry thisEntry = this.ripTable.lookup(addr);
@@ -232,7 +222,6 @@ public class Router extends Device {
 					ripTable.addEntry(newEntry);
 				} else {
 					// Update existing entry if a shorter path is found
-					System.out.println("221");
 					if ((ripEntry.getMetric() + 1) < thisEntry.getMetric()) {
 						thisEntry.setNextHopAddress(addr);
 						thisEntry.updateTime();
@@ -250,7 +239,6 @@ public class Router extends Device {
 				}
 			}
 		}
-		System.out.println("232");
 	}
 	
 	// Helper function to handle non-RIP packets
@@ -262,7 +250,6 @@ public class Router extends Device {
 		if (RIProuteEntry == null) {
 			return;
 		}
-		System.out.println("224");
 		// Determine the next-hop IP address
 		int nextHopIp = RIProuteEntry.getNextHopAddress();
 	
@@ -271,7 +258,6 @@ public class Router extends Device {
 		if (nextHopMac == null) {
 			return;
 		}
-		System.out.println("253");
 		Iface outIface = null;
 		// Get the outgoing interface based on the next hop IP address of the packet
 		for (Iface iface : this.interfaces.values()) {
@@ -283,7 +269,6 @@ public class Router extends Device {
 			System.out.println("Packet dropped.\n");
 			return;
 		}
-		System.out.println("265");
 		// Update the Ethernet header with the MAC addresses
 		etherPacket.setDestinationMACAddress(nextHopMac.toBytes());
 		etherPacket.setSourceMACAddress(outIface.getMacAddress().toBytes());
@@ -303,7 +288,6 @@ public class Router extends Device {
 				return (Iface) iface;
 			}
 		}
-		System.out.println("286");
 		return null;
 	}
 
@@ -340,7 +324,6 @@ public class Router extends Device {
 		}
 
 		if (directive == BROADCAST_REQ || directive == BROADCAST_RES) {	// Send RIP response out of all interfaces, called every 10 seconds
-			// if (etherPacket == null || outIface == null) System.out.println("NULL 314");
 			for (Map.Entry<String, Iface> iface : this.interfaces.entrySet()) {
 				// Create Ethernet packet
 				Ethernet etherpacket = new Ethernet();
@@ -372,7 +355,6 @@ public class Router extends Device {
 			}
 		}
 		else if (directive == UNICAST_REQ || directive == UNICAST_RES) {	// Send directed response
-			if (etherPacket == null || outIface == null) System.out.println("NULL 346");
 			Ethernet etherpacket = new Ethernet();
 			etherpacket.setDestinationMACAddress(etherPacket.getSourceMACAddress());
 			etherpacket.setEtherType(Ethernet.TYPE_IPv4);

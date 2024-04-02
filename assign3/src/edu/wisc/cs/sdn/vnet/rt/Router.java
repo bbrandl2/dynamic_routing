@@ -283,11 +283,6 @@ public class Router extends Device {
                 existingEntry.setMetric(receivedEntry.getMetric() + 1);
             }
         }
-
-        // If it's a RIP request, send a response
-        if (ripPacket.getCommand() == RIPv2.COMMAND_REQUEST) {
-            sendUnsolicitedRIPResponse();
-        }
     }
 
     private RIPv2Entry findRIPEntry(RIPv2Entry entry) {

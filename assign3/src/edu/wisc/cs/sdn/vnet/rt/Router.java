@@ -109,6 +109,7 @@ public class Router extends Device {
 				etherPacket.toString().replace("\n", "\n\t"));
 		System.out.println("110");
 		// Check if the packet is not IPv4, drop it if not
+		System.out.println(etherPacket.getEtherType());
 		if (etherPacket.getEtherType() != Ethernet.TYPE_IPv4) {
 			return;
 		}

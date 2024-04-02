@@ -73,6 +73,7 @@ public class Router extends Device {
     }
 
     private void handleSendRIPRequest() {
+        System.out.println("HANDLE SEND REQUEST");
         // Create a RIP request packet
         RIPv2 ripPacket = new RIPv2();
         ripPacket.setCommand(RIPv2.COMMAND_REQUEST);
@@ -87,7 +88,7 @@ public class Router extends Device {
     }
 
     private void sendUnsolicitedRIPResponse() {
-		System.out.println("SEND UNSOLICITED RESPONSE");
+		System.out.println("HANDLE SEND UNSOLICITED RESPONSE");
         // Create a RIPv2 response packet
         RIPv2 ripPacket = new RIPv2();
         ripPacket.setCommand(RIPv2.COMMAND_RESPONSE);
@@ -97,7 +98,7 @@ public class Router extends Device {
         for (Map.Entry<String, Iface> entry : this.interfaces.entrySet()) {
             Iface iface = entry.getValue();
             // sendRIPPacket(ripPacket, iface);
-            sendRIPRequest(ripPacket, iface);
+            sendRIPResponse(ripPacket, iface);
         }
     }
 

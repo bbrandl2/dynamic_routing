@@ -104,7 +104,7 @@ public class Main
 
 				// Unsolicited response
 				task10 = new MyTask((Router)dev, 10);
-				timer.schedule(task10, 0, 10000);
+				timer.schedule(task10, 10000, 10000);
 				// // Create a "send RIP response" method to call every 10 seconds
 
 				// // Update check

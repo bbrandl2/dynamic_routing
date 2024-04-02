@@ -71,6 +71,10 @@ public class Router extends Device {
             for (Map.Entry<String, Iface> iface : this.interfaces.entrySet()) {
                 ripTable.addEntry(new RIPv2Entry(iface.getValue().getIpAddress(), iface.getValue().getSubnetMask(), 0, System.currentTimeMillis(), true));
             }
+
+			this.sendRIPPacket(BROADCAST_REQ, null, 0, null);
+
+
             System.out.println("Loaded dynamic route table");
             System.out.println("-------------------------------------------------");
             System.out.print(this.ripTable.toString());

@@ -15,11 +15,11 @@ public class MyTask extends TimerTask {
     public void run() {
         if (frequency == 10){
             System.out.println("Sending unsolicited response...\n" + router.toString() + "\n");
-            router.sendResponse(true);
+            // router.sendResponse(true);
         }
         else if (frequency == 30){
             System.out.println("Update time check...\n");
-            router.checkEntryTimes();
+            // router.checkEntryTimes();
         }
         else{
             System.out.println("Error in run() function of MyTask.java");

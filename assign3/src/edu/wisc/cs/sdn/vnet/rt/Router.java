@@ -60,16 +60,16 @@ public class Router extends Device {
         }
 
         // Start sending unsolicited RIP responses every 10 seconds
-        // new Thread(() -> {
-        //     while (ripEnabled) {
-        //         sendUnsolicitedRIPResponse();
-        //         try {
-        //             Thread.sleep(10000); // 10 seconds interval
-        //         } catch (InterruptedException e) {
-        //             e.printStackTrace();
-        //         }
-        //     }
-        // }).start();
+        new Thread(() -> {
+            while (ripEnabled) {
+                sendUnsolicitedRIPResponse();
+                try {
+                    Thread.sleep(10000); // 10 seconds interval
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }).start();
     }
 
     private void handleSendRIPRequest() {
@@ -223,17 +223,13 @@ public class Router extends Device {
 
         // Check if the packet is UDP and RIP
         if (ipv4Packet.getProtocol() == IPv4.PROTOCOL_UDP) {
-            System.out.println("222--PACKET IS UDP");
             UDP udpPacket = (UDP) ipv4Packet.getPayload();
             if (udpPacket.getDestinationPort() == UDP_RIP_PORT) {
-                System.out.println("225--PACKET IS DESTINED FOR PORT 520");
                 RIPv2 ripPayload = (RIPv2) udpPacket.getPayload();
                 if (ripPayload.getCommand() == RIPv2.COMMAND_REQUEST) {
-                    System.out.println("228--PACKET IS REQUEST");
                     // Handle RIP request
                     sendRIPResponse(ripPayload, inIface);
                 } else if (ripPayload.getCommand() == RIPv2.COMMAND_RESPONSE) {
-                    System.out.println("232--PACKET IS RESPONSE");
                     // Handle RIP response
                     handleRIPPacket(ripPayload, inIface);
                 }
@@ -244,35 +240,35 @@ public class Router extends Device {
         }
         System.out.println("241--HANDLE OF NORMAL PACKET");
 
+        System.out.println("243--CHECKSUM CHECK");
         // Verify the checksum of the IPv4 packet
         if (!verifyChecksum(ipv4Packet)) {
-            System.out.println("249--CHECKSUM");
             return; // Drop the packet if the checksum is incorrect
         }
 
         // Decrement the TTL of the IPv4 packet
         ipv4Packet.setTtl((byte) (ipv4Packet.getTtl() - 1));
 
+        System.out.println("252--TTL CHECK");
         // Drop the packet if the TTL is 0
         if (ipv4Packet.getTtl() == 0) {
-            System.out.println("258--TTL");
             return;
         }
 
         // Determine whether the packet is destined for one of the router's interfaces
         for (Map.Entry<String, Iface> iface : this.interfaces.entrySet()) {
+            System.out.println("260--DESTINED FOR ROUTER CHECK");
             // Drop packet if it matches a router interface IP
             if (iface.getValue().getIpAddress() == ipv4Packet.getDestinationAddress())
-                System.out.println("266--DESTINED FOR ROUTER");
                 return;
         }
 
         // Lookup the RouteEntry
         RouteEntry routeEntry = this.routeTable.lookup(ipv4Packet.getDestinationAddress());
 
+        System.out.println("269--NOT IN ROUTE TABLE CHECK");
         // Drop the packet if no matching entry found
         if (routeEntry == null) {
-            System.out.println("275--NOT IN ROUTE TABLE");
             return;
         }
 
@@ -284,8 +280,8 @@ public class Router extends Device {
 
         // Lookup MAC address corresponding to next-hop IP address
         MACAddress nextHopMac = this.arpCache.lookup(nextHopIp).getMac();
+        System.out.println("283--NOT IN ARP CACHE CHECK");
         if (nextHopMac == null) {
-            System.out.println("288--NOT IN ARP CACHE");
             return; // Drop the packet if MAC address not found
         }
 

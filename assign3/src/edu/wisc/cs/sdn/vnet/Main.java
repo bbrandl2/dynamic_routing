@@ -94,25 +94,29 @@ public class Main
 		{
 			// Read static route table
 			if (routeTableFile != null){ 
+				System.out.println("STATIC\n");
+				((Router)dev).setStatic(true);
 				((Router)dev).loadRouteTable(routeTableFile); 
 			}
 			else { // Static route table not provided; use RIP
 				((Router)dev).setStatic(false);
 				((Router)dev).loadRouteTable(routeTableFile); 
+
+				// Unsolicited response
+				task10 = new MyTask((Router)dev, 10);
+				timer.schedule(task10, 10000, 10000);
+				// // Create a "send RIP response" method to call every 10 seconds
+
+				// // Update check
+				// task30 = new MyTask((Router)dev, 30);
+				// timer.schedule(task30, 0, 1000);
 			}
 			
 			// Read static ACP cache
 			if (arpCacheFile != null)
 			{ ((Router)dev).loadArpCache(arpCacheFile); }
 
-			// Unsolicited response
-			task10 = new MyTask((Router)dev, 10);
-			timer.schedule(task10, 0, 10000);
-			// Create a "send RIP response" method to call every 10 seconds
-
-			// Update check
-			task30 = new MyTask((Router)dev, 30);
-			timer.schedule(task30, 0, 1000);
+			
 		}
 
 		

@@ -69,7 +69,10 @@ public class Router extends Device {
             System.out.println("-------------------------------------------------");
         } else {    
             for (Map.Entry<String, Iface> iface : this.interfaces.entrySet()) {
-                ripTable.addEntry(new RIPv2Entry(iface.getValue().getIpAddress(), iface.getValue().getSubnetMask(), 0, System.currentTimeMillis(), true));
+				RIPv2Entry new_entry = new RIPv2Entry(iface.getValue().getIpAddress(), iface.getValue().getSubnetMask(), 0, System.currentTimeMillis(), true);
+				new_entry.setinIface(iface.getValue());
+                ripTable.addEntry(new_entry);
+				
             }
             System.out.println("Loaded dynamic route table");
             System.out.println("-------------------------------------------------");
@@ -131,9 +134,9 @@ public class Router extends Device {
 	
 		// Handle the packet based on the routing type (static or dynamic)
 		if (this.isStatic) {
-			handleStaticRouting(etherPacket, ipv4Packet);
+			handleStaticRouting(etherPacket, ipv4Packet, inIface);
 		} else {
-			handleDynamicRouting(etherPacket, ipv4Packet);
+			handleDynamicRouting(etherPacket, ipv4Packet, inIface);
 		}
 
 		// Print a message indicating that the router sent a packet
@@ -142,7 +145,7 @@ public class Router extends Device {
 	}
 	
 	// Helper function to handle static routing for IPv4 packets
-	private void handleStaticRouting(Ethernet etherPacket, IPv4 ipv4Packet) {
+	private void handleStaticRouting(Ethernet etherPacket, IPv4 ipv4Packet, Iface inIface) {
 		// Drop the packet if it's destined for one of the router's interfaces
 		for (Map.Entry<String, Iface> iface : this.interfaces.entrySet()) {
 			if (iface.getValue().getIpAddress() == ipv4Packet.getDestinationAddress())
@@ -182,25 +185,30 @@ public class Router extends Device {
 	}
 	
 	// Helper function to handle dynamic routing for IPv4 packets
-	private void handleDynamicRouting(Ethernet etherPacket, IPv4 ipv4Packet) {
+	private void handleDynamicRouting(Ethernet etherPacket, IPv4 ipv4Packet, Iface inIface) {
 		if (ipv4Packet.getProtocol() == IPv4.PROTOCOL_UDP && (((UDP) ipv4Packet.getPayload()).getDestinationPort() == 520)) {
 			// Handle RIP packets
-			handleRIPPacket(etherPacket, ipv4Packet);
+			handleRIPPacket(etherPacket, ipv4Packet, inIface);
 		} else {
 			// Handle non-RIP packets
-			handleNonRIPPacket(etherPacket, ipv4Packet);
+			handleNonRIPPacket(etherPacket, ipv4Packet, inIface);
 		}
 	}
 	
 	// Helper function to handle RIP packets
-	private void handleRIPPacket(Ethernet etherPacket, IPv4 ipv4Packet) {
+	private void handleRIPPacket(Ethernet etherPacket, IPv4 ipv4Packet, Iface inIface) {
 		// Extract the RIP packet from the UDP payload
 		UDP udpPacket = (UDP) ipv4Packet.getPayload();
 		RIPv2 ripPacket = (RIPv2) udpPacket.getPayload();
 		
 		// Check if the RIP packet is a req or res
 		if (ripPacket.getCommand() == RIPv2.COMMAND_REQUEST) {
-			Iface outIface = getOutgoingIface(etherPacket);
+			Iface outIface = this.ripTable.lookup(ipv4Packet.getDestinationAddress()).getinIface();
+
+			if (outIface == null) {
+				System.out.println("208: no ripentry found");
+			}
+
 			// send the response on the same interface as the request
 			sendRIPPacket(UNICAST_RES, etherPacket, ipv4Packet.getSourceAddress(), outIface);
 		} else if (ripPacket.getCommand() == RIPv2.COMMAND_RESPONSE) {
@@ -212,23 +220,31 @@ public class Router extends Device {
 				if (thisEntry == null) {
 					// Add a new entry to the RIP table if not already present
 					RIPv2Entry newEntry = new RIPv2Entry(addr, ripEntry.getSubnetMask(), ripEntry.getMetric() + 1, System.currentTimeMillis(), false);
+					newEntry.setinIface(inIface);
 					ripTable.addEntry(newEntry);
 				} else {
 					// Update existing entry if a shorter path is found
 					if ((ripEntry.getMetric() + 1) < thisEntry.getMetric()) {
 						thisEntry.setNextHopAddress(addr);
 						thisEntry.updateTime();
-					} else if ((thisEntry.getMetric() + 1) < ripEntry.getMetric()) {
-						Iface out = getOutgoingIface(etherPacket);
-						this.sendRIPPacket(UNICAST_RES, etherPacket, ipv4Packet.getSourceAddress(), out);
-					}
+					} 
+					// else if ((thisEntry.getMetric() + 1) < ripEntry.getMetric()) {
+					// 	Iface outIface = this.ripTable.lookup(ipv4Packet.getDestinationAddress()).getinIface();
+
+					// 	if (outIface == null) {
+					// 		System.out.println("208: no ripentry found");
+					// 	}
+
+					// 	// send the response on the same interface as the request
+					// 	sendRIPPacket(UNICAST_RES, etherPacket, ipv4Packet.getSourceAddress(), outIface);
+					// }
 				}
 			}
 		}
 	}
 	
 	// Helper function to handle non-RIP packets
-	private void handleNonRIPPacket(Ethernet etherPacket, IPv4 ipv4Packet) {
+	private void handleNonRIPPacket(Ethernet etherPacket, IPv4 ipv4Packet, Iface inIface) {
 		// Lookup the entry corresponding to the destination IP address in the RIP table
 		RIPv2Entry RIProuteEntry = this.ripTable.lookup(ipv4Packet.getDestinationAddress());
 	

@@ -2,6 +2,8 @@ package net.floodlightcontroller.packet;
 
 import java.nio.ByteBuffer;
 
+import edu.wisc.cs.sdn.vnet.Iface;
+
 /**
   * @author Anubhavnidhi Abhashkumar and Aaron Gember-Jacobson
   */
@@ -17,6 +19,7 @@ public class RIPv2Entry
 	protected int metric;
     protected long timestamp;
     protected boolean perm;
+    protected Iface inIface;
 
     public RIPv2Entry()
     { }
@@ -83,6 +86,13 @@ public class RIPv2Entry
     public void updateTime(){
         this.timestamp = System.currentTimeMillis();
     }
+
+    public Iface getinIface()
+    { return this.inIface; }
+
+    public void setinIface(Iface inIface)
+    { this.inIface = inIface; }
+
 
 	public byte[] serialize() 
     {

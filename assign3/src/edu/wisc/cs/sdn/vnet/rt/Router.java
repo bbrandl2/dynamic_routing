@@ -296,6 +296,7 @@ public class Router extends Device {
         ipv4Packet.setChecksum((short)0);
         ipv4Packet.serialize();
 
+        System.out.println("299--SENDING REGULAR PACKET");
         // Send the packet out the correct interface
         this.sendPacket(etherPacket, routeEntry.getInterface());
 

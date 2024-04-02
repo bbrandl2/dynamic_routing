@@ -71,6 +71,9 @@ public class Router extends Device {
             for (Map.Entry<String, Iface> iface : this.interfaces.entrySet()) {
                 ripTable.addEntry(new RIPv2Entry(iface.getValue().getIpAddress(), iface.getValue().getSubnetMask(), 0, System.currentTimeMillis(), true));
             }
+
+			// Send broadcast request
+
             System.out.println("Loaded dynamic route table");
             System.out.println("-------------------------------------------------");
             System.out.print(this.ripTable.toString());
@@ -211,10 +214,11 @@ public class Router extends Device {
 				if ((ripEntry.getMetric() + 1) < thisEntry.getMetric()) {
 					thisEntry.setNextHopAddress(addr);
 					thisEntry.updateTime();
-				} else if ((thisEntry.getMetric() + 1) < ripEntry.getMetric()) {
-					// TODO
-					// Send a response back to other router indicating a shorter path
-				}
+				} 
+				// else if ((thisEntry.getMetric() + 1) < ripEntry.getMetric()) {
+				// 	// TODO
+				// 	// Send a response back to other router indicating a shorter path
+				// }
 			}
 		}
 	}
@@ -254,10 +258,11 @@ public class Router extends Device {
 	
 	private Iface getOutgoingInterface(int ipAddress) {
 		for (Iface iface : this.interfaces.values()) {
-			if (iface.getIpAddress() == ipAddress) {
+			if ((iface.getIpAddress() & iface.getSubnetMask()) == (ipAddress & iface.getSubnetMask())) {
 				return iface;
 			}
 		}
+		System.out.println("getOutgoingInterface: no matching interface");
 		return null;
 	}	
 
@@ -318,9 +323,6 @@ public class Router extends Device {
 	
 				ipPacket.setPayload(udpPacket);
 	
-				// Add RIPv2 packet (route table) as UDP payload
-				// ripTable.setParent(udpPacket); // Is this needed?
-
 				udpPacket.setPayload(ripTable);
 	
 				// Send packet out of current interface

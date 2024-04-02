@@ -239,7 +239,7 @@ public class Router extends Device {
 		int nextHopIp = RIProuteEntry.getNextHopAddress();
 	
 		// Lookup the MAC address corresponding to the next-hop IP address in the ARP cache
-		if (this.arpCache == null) System.out.println("NULL ARP CACHE");
+		if (arpCache == null) System.out.println("NULL ARP CACHE");
 		MACAddress nextHopMac = this.arpCache.lookup(nextHopIp).getMac();
 		if (nextHopMac == null) {
 			return;
